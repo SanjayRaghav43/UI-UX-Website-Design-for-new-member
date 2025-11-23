@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vaidya - Professional Medical Grid</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- AOS Animation Library -->
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+
+    <style>
+        body { 
+            background-color: #020617; /* Deep Slate */
+            font-family: 'Montserrat', sans-serif;
+            color: #e2e8f0;
+            overflow-x: hidden;
+        }
+
+        /* Professional Background Pattern */
+        .bg-pattern {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.08), transparent 25%), 
+                radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.08), transparent 25%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* Glass Card Styling */
+        .patient-card {
+            background: rgba(30, 41, 59, 0.4);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .patient-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%; width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+            transition: 0.5s;
+        }
+
+        .patient-card:hover::before {
+            left: 100%;
+        }
+
+        .patient-card:hover {
+            transform: translateY(-5px);
+            background: rgba(30, 41, 59, 0.7);
+            border-color: rgba(59, 130, 246, 0.3);
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Custom Select Dropdown Styling */
+        .custom-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2394a3b8%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.7rem top 50%;
+            background-size: 0.65rem auto;
+        }
+
+        /* Modal Transition */
+        .modal-enter { opacity: 0; transform: scale(0.95); }
+        .modal-enter-active { opacity: 1; transform: scale(1); transition: all 0.3s ease-out; }
+        .modal-exit { opacity: 1; transform: scale(1); }
+        .modal-exit-active { opacity: 0; transform: scale(0.95); transition: all 0.2s ease-in; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        .mic-active { animation: pulse-red 2s infinite; color: #f43f5e; text-shadow: 0 0 15px rgba(244, 63, 94, 0.5); border-color: #f43f5e !important; }
+        @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(244, 63, 94, 0); } 100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0); } }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <div class="bg-pattern"></div>
+
+    <!-- Header (Sticky & Responsive) -->
+    <header class="sticky top-0 z-40 bg-[#020617]/90 backdrop-blur-md border-b border-white/5 px-4 md:px-8 py-3 md:py-4 flex justify-between items-center shadow-lg">
+        <div class="flex flex-col">
+            <h1 class="text-2xl md:text-4xl font-bold text-white tracking-tighter" style="font-family: 'Rajdhani', sans-serif;">
+                Vaid<span class="text-blue-500">ya</span>
+            </h1>
+            <span class="text-[8px] md:text-[10px] font-mono text-blue-400 tracking-[0.2em] md:tracking-[0.3em] uppercase">Clinical Intelligence Grid</span>
+        </div>
+
+        <div class="flex items-center gap-3 md:gap-6">
+            <!-- Hidden on small mobile screens -->
+            <div id="voice-feedback" class="hidden lg:flex items-center gap-3 px-4 py-2 rounded-full bg-slate-800/50 border border-white/5">
+                <div class="flex space-x-1 h-3 items-center">
+                    <div class="w-1 h-2 bg-blue-400 animate-pulse"></div>
+                    <div class="w-1 h-3 bg-blue-400 animate-pulse" style="animation-delay: 0.1s"></div>
+                    <div class="w-1 h-2 bg-blue-400 animate-pulse" style="animation-delay: 0.2s"></div>
+                </div>
+                <span id="voice-text" class="text-xs font-mono text-slate-300">SYSTEM READY</span>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <div class="text-right hidden sm:block">
+                    <div class="text-[10px] text-slate-500 font-bold uppercase">Total Records</div>
+                    <div class="text-base md:text-lg font-mono text-white leading-none" id="total-count">50</div>
+                </div>
+                <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center text-white font-bold shadow-lg border border-blue-400/30 text-sm md:text-base">
+                    Dr
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Grid Container (Responsive Padding) -->
+    <main class="flex-1 p-4 md:p-8 container mx-auto max-w-7xl">
+        
+        <!-- Filter & Toolbar -->
+        <div class="mb-8 space-y-4">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <h2 class="text-xl md:text-2xl font-light text-slate-200">Patients Records</h2>
+                
+                <!-- Search -->
+                <div class="relative w-full md:w-auto flex-1 max-w-md">
+                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                    <input type="text" id="search-input" placeholder="Search Name or ID..." onkeyup="applyFilters()" class="w-full bg-slate-800/50 border border-white/10 rounded-full py-2.5 pl-10 pr-6 text-sm text-white focus:outline-none focus:border-blue-500 transition-all">
+                </div>
+            </div>
+
+            <!-- Filter Chips/Dropdowns -->
+            <div class="flex flex-wrap gap-3 p-3 bg-slate-900/40 border border-white/5 rounded-xl">
+                
+                <!-- Status Filter -->
+                <div class="relative">
+                    <select id="status-filter" onchange="applyFilters()" class="custom-select bg-slate-800 text-slate-300 text-xs font-bold py-2 pl-3 pr-8 rounded-lg border border-white/10 hover:border-blue-500 focus:outline-none">
+                        <option value="All">Status: All</option>
+                        <option value="Stable">Stable</option>
+                        <option value="Critical">Critical</option>
+                        <option value="Observation">Observation</option>
+                        <option value="Discharged">Discharged</option>
+                        <option value="Serious">Serious</option>
+                    </select>
+                </div>
+
+                <!-- Gender Filter -->
+                <div class="relative">
+                    <select id="gender-filter" onchange="applyFilters()" class="custom-select bg-slate-800 text-slate-300 text-xs font-bold py-2 pl-3 pr-8 rounded-lg border border-white/10 hover:border-blue-500 focus:outline-none">
+                        <option value="All">Sex: All</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                    </select>
+                </div>
+
+                <!-- Age Group Filter -->
+                <div class="relative">
+                    <select id="age-filter" onchange="applyFilters()" class="custom-select bg-slate-800 text-slate-300 text-xs font-bold py-2 pl-3 pr-8 rounded-lg border border-white/10 hover:border-blue-500 focus:outline-none">
+                        <option value="All">Age: All</option>
+                        <option value="Young">18 - 30</option>
+                        <option value="Middle">31 - 50</option>
+                        <option value="Senior">51+</option>
+                    </select>
+                </div>
+
+                <button onclick="resetFilters()" class="text-xs font-bold text-slate-500 hover:text-white px-3 py-2 transition-colors">
+                    <i class="fas fa-undo mr-1"></i> Reset
+                </button>
+            </div>
+        </div>
+
+        <!-- Responsive Grid: 1 col mobile, 2 col tablet, 3 col desktop -->
+        <div id="patient-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 pb-20">
+            <!-- Cards injected via JS -->
+        </div>
+        
+        <!-- Empty State -->
+        <div id="empty-state" class="hidden text-center py-20">
+            <div class="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-600">
+                <i class="fas fa-search text-2xl"></i>
+            </div>
+            <h3 class="text-slate-400 font-bold">No records found</h3>
+            <p class="text-slate-600 text-sm">Try adjusting your filters</p>
+        </div>
+    </main>
+
+    <!-- Floating Voice Button -->
+    <div class="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-30 flex flex-col gap-3 md:gap-4">
+        <button onclick="showGuide()" class="w-12 h-12 md:w-14 md:h-14 rounded-full bg-slate-800 border border-white/10 text-slate-400 hover:text-white hover:border-white/30 shadow-xl flex items-center justify-center transition-all">
+            <i class="fas fa-question text-lg md:text-xl"></i>
+        </button>
+        <button id="mic-btn" class="w-14 h-14 md:w-16 md:h-16 rounded-full bg-blue-600 hover:bg-blue-500 text-white shadow-2xl shadow-blue-600/30 flex items-center justify-center text-xl md:text-2xl transition-all transform hover:scale-105 border-2 border-transparent">
+            <i class="fas fa-microphone"></i>
+        </button>
+    </div>
+
+    <!-- Modal Overlay -->
+    <div id="modal-overlay" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300 p-4">
+        <!-- Content injected via JS -->
+    </div>
+
+    <script>
+        // ==========================================
+        //  DATA GENERATION
+        // ==========================================
+
+        const conditions = [
+            { name: "Post-Op Recovery", color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", status: "Stable" },
+            { name: "Cardiac Monitor", color: "text-red-400", bg: "bg-red-500/10", border: "border-red-500/20", status: "Critical" },
+            { name: "Neurology Obs", color: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/20", status: "Observation" },
+            { name: "Orthopedics", color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20", status: "Stable" },
+            { name: "Respiratory", color: "text-orange-400", bg: "bg-orange-500/10", border: "border-orange-500/20", status: "Serious" },
+            { name: "General Checkup", color: "text-purple-400", bg: "bg-purple-500/10", border: "border-purple-500/20", status: "Discharged" }
+        ];
+        
+        // Indian Names
+        const firstNames = ["Aarav", "Vivaan", "Aditya", "Vihaan", "Arjun", "Sai", "Reyansh", "Ayan", "Krishna", "Ishaan", "Diya", "Saanvi", "Ananya", "Aadhya", "Pari", "Riya", "Anika", "Navya", "Angel", "Myra", "Rohan", "Siddharth", "Vikram"];
+        const lastNames = ["Patel", "Sharma", "Singh", "Kumar", "Gupta", "Reddy", "Rao", "Mehta", "Joshi", "Nair", "Aggarwal", "Verma", "Mishra", "Shah", "Iyer", "Chopra", "Desai", "Malhotra"];
+
+        function getRandomDate() {
+            const year = Math.floor(Math.random() * (2025 - 2022 + 1)) + 2022;
+            const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            const month = months[Math.floor(Math.random() * months.length)];
+            const day = Math.floor(Math.random() * 28) + 1;
+            return `${month} ${day}, ${year}`;
+        }
+
+        function generatePatients(count) {
+            return Array.from({ length: count }, (_, i) => {
+                const cond = conditions[Math.floor(Math.random() * conditions.length)];
+                const fn = firstNames[Math.floor(Math.random() * firstNames.length)];
+                const ln = lastNames[Math.floor(Math.random() * lastNames.length)];
+                
+                const hour = Math.floor(Math.random() * 12) + 1;
+                const min = Math.floor(Math.random() * 60).toString().padStart(2, '0');
+                const ampm = Math.random() > 0.5 ? "AM" : "PM";
+                
+                // New: Random Age and Sex
+                const age = Math.floor(Math.random() * 60) + 18;
+                const sex = Math.random() > 0.5 ? "Male" : "Female";
+
+                return {
+                    id: 1000 + i,
+                    name: `${fn} ${ln}`,
+                    age: age,
+                    sex: sex,
+                    condition: cond.name,
+                    status: cond.status,
+                    style: cond,
+                    room: `${Math.floor(Math.random()*5)+1}0${Math.floor(Math.random()*9)}-${['A','B','C'][Math.floor(Math.random()*3)]}`,
+                    admissionDate: getRandomDate(),
+                    admissionTime: `${hour}:${min} ${ampm}`,
+                    doctor: "Dr. A. Strange",
+                    bill: `₹${(Math.random()*50000 + 2000).toFixed(2)}`,
+                    notes: "Patient vital signs are currently being monitored. Routine checkups scheduled every 4 hours. Pain management protocol is active."
+                };
+            });
+        }
+
+        let patients = generatePatients(50); 
+
+        // --- FILTER LOGIC ---
+        function applyFilters() {
+            const searchText = document.getElementById('search-input').value.toLowerCase();
+            const statusFilter = document.getElementById('status-filter').value;
+            const genderFilter = document.getElementById('gender-filter').value;
+            const ageFilter = document.getElementById('age-filter').value;
+
+            const filtered = patients.filter(p => {
+                // Search Filter
+                const matchesSearch = p.name.toLowerCase().includes(searchText) || 
+                                      p.id.toString().includes(searchText) ||
+                                      p.condition.toLowerCase().includes(searchText);
+                
+                // Dropdown Filters
+                const matchesStatus = statusFilter === "All" || p.status === statusFilter;
+                const matchesGender = genderFilter === "All" || p.sex === genderFilter;
+                
+                let matchesAge = true;
+                if (ageFilter === "Young") matchesAge = p.age >= 18 && p.age <= 30;
+                if (ageFilter === "Middle") matchesAge = p.age > 30 && p.age <= 50;
+                if (ageFilter === "Senior") matchesAge = p.age > 50;
+
+                return matchesSearch && matchesStatus && matchesGender && matchesAge;
+            });
+
+            renderCards(filtered);
+            
+            // Empty State Toggle
+            const emptyState = document.getElementById('empty-state');
+            if(filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+            }
+            
+            // Update Counter
+            document.getElementById('total-count').innerText = filtered.length;
+        }
+
+        function resetFilters() {
+            document.getElementById('search-input').value = "";
+            document.getElementById('status-filter').value = "All";
+            document.getElementById('gender-filter').value = "All";
+            document.getElementById('age-filter').value = "All";
+            applyFilters();
+        }
+
+        // --- RENDER GRID ---
+        const grid = document.getElementById('patient-grid');
+
+        function renderCards(data) {
+            grid.innerHTML = '';
+            data.forEach((p, index) => {
+                const card = document.createElement('div');
+                card.className = `patient-card rounded-xl p-6 cursor-pointer group`;
+                card.setAttribute('data-aos', 'fade-up');
+                card.onclick = () => openModal(p);
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex items-center gap-4">
+                            <div class="w-10 h-10 md:w-12 md:h-12 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center text-base md:text-lg font-bold text-slate-400 group-hover:text-white group-hover:bg-blue-600 group-hover:border-blue-400 transition-colors">
+                                ${p.name.charAt(0)}
+                            </div>
+                            <div>
+                                <h3 class="text-base md:text-lg font-bold text-white group-hover:text-blue-300 transition-colors">${p.name}</h3>
+                                <div class="flex gap-2 text-[10px] md:text-xs font-mono text-slate-500">
+                                    <span>ID: #${p.id}</span>
+                                    <span>•</span>
+                                    <span class="text-slate-400">${p.sex.charAt(0)} / ${p.age}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="status-badge px-2 py-1 md:px-3 md:py-1 rounded-full text-[10px] md:text-xs uppercase border ${p.style.bg} ${p.style.color} ${p.style.border}">
+                            ${p.status}
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-2 mb-4">
+                        <div class="flex justify-between text-xs md:text-sm">
+                            <span class="text-slate-500">Condition</span>
+                            <span class="text-slate-300 font-medium text-right">${p.condition}</span>
+                        </div>
+                        <div class="flex justify-between text-xs md:text-sm">
+                            <span class="text-slate-500">Location</span>
+                            <span class="text-slate-300 font-medium">Room ${p.room}</span>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t border-white/5 flex justify-between items-center">
+                        <span class="text-[10px] md:text-xs text-slate-600 flex items-center gap-1">
+                            <i class="far fa-clock"></i> ${p.admissionDate}
+                        </span>
+                        <i class="fas fa-chevron-right text-slate-600 group-hover:text-white transition-transform group-hover:translate-x-1"></i>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // --- MODAL LOGIC ---
+        const modalOverlay = document.getElementById('modal-overlay');
+
+        function openModal(p) {
+            modalOverlay.innerHTML = `
+                <div class="bg-slate-900 border border-white/10 w-full max-w-4xl rounded-2xl overflow-hidden shadow-2xl transform scale-95 opacity-0 transition-all duration-300 modal-content max-h-[90vh] flex flex-col">
+                    <div class="flex flex-col md:flex-row h-auto md:h-[600px] overflow-y-auto md:overflow-hidden">
+                        <!-- Sidebar -->
+                        <div class="w-full md:w-1/3 bg-slate-950 p-6 md:p-8 flex flex-col items-center text-center border-b md:border-b-0 md:border-r border-white/5 relative">
+                            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-500"></div>
+                            <div class="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-slate-800 shadow-lg flex items-center justify-center text-4xl md:text-5xl font-light text-slate-600 bg-slate-900 mb-4 md:mb-6">
+                                ${p.name.charAt(0)}
+                            </div>
+                            <h2 class="text-2xl md:text-3xl font-bold text-white mb-1" style="font-family: 'Rajdhani'">${p.name}</h2>
+                            <p class="text-blue-500 font-mono text-sm mb-2">#${p.id}</p>
+                            <p class="text-slate-400 text-xs uppercase tracking-wider mb-6 md:mb-8">${p.sex}  •  ${p.age} Years Old</p>
+                            
+                            <div class="w-full mt-auto space-y-3">
+                                <button onclick="triggerAction('Calling', '${p.name}')" class="w-full py-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold tracking-wider transition-all shadow-lg shadow-blue-900/20 flex items-center justify-center gap-2">
+                                    <i class="fas fa-phone-alt"></i> CALL
+                                </button>
+                                <button onclick="triggerAction('Messaging', '${p.name}')" class="w-full py-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold tracking-wider transition-all border border-slate-700 flex items-center justify-center gap-2">
+                                    <i class="fas fa-comment-alt"></i> MESSAGE
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Content -->
+                        <div class="w-full md:w-2/3 p-6 md:p-8 bg-slate-900/50 flex flex-col overflow-y-auto">
+                            <div class="flex justify-between items-center mb-6 md:mb-8">
+                                <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest">Medical Dossier</h3>
+                                <button onclick="closeModal()" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-white transition-colors"><i class="fas fa-times"></i></button>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8">
+                                <div class="p-4 rounded-lg bg-slate-800/50 border border-white/5">
+                                    <div class="text-xs text-slate-500 uppercase font-bold mb-1">Condition</div>
+                                    <div class="text-lg text-white ${p.style.color}">${p.condition}</div>
+                                </div>
+                                <div class="p-4 rounded-lg bg-slate-800/50 border border-white/5">
+                                    <div class="text-xs text-slate-500 uppercase font-bold mb-1">Current Status</div>
+                                    <div class="text-lg text-white">${p.status}</div>
+                                </div>
+                                <div class="p-4 rounded-lg bg-slate-800/50 border border-white/5">
+                                    <div class="text-xs text-slate-500 uppercase font-bold mb-1">Admitted Date</div>
+                                    <div class="text-lg text-white">${p.admissionDate}</div>
+                                </div>
+                                <div class="p-4 rounded-lg bg-slate-800/50 border border-white/5">
+                                    <div class="text-xs text-slate-500 uppercase font-bold mb-1">Admitted Time</div>
+                                    <div class="text-lg text-blue-300 flex items-center gap-2">
+                                        <i class="far fa-clock"></i> ${p.admissionTime}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex-1">
+                                <h4 class="text-xs text-slate-500 uppercase font-bold mb-2">Clinical Notes</h4>
+                                <div class="p-6 rounded-lg bg-slate-800/30 border border-dashed border-slate-700 text-slate-300 leading-relaxed text-sm md:text-base">
+                                    ${p.notes}
+                                </div>
+                            </div>
+                            
+                            <div class="mt-6 flex justify-between items-center border-t border-white/5 pt-4">
+                                <span class="text-xs text-slate-500">Attending: ${p.doctor}</span>
+                                <span class="text-lg font-mono text-emerald-400">${p.bill}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            modalOverlay.style.opacity = 1;
+            modalOverlay.style.pointerEvents = 'auto';
+            setTimeout(() => {
+                modalOverlay.querySelector('.modal-content').classList.remove('scale-95', 'opacity-0');
+                modalOverlay.querySelector('.modal-content').classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+
+        function closeModal() {
+            const content = modalOverlay.querySelector('.modal-content');
+            if(content) {
+                content.classList.remove('scale-100', 'opacity-100');
+                content.classList.add('scale-95', 'opacity-0');
+            }
+            setTimeout(() => {
+                modalOverlay.style.opacity = 0;
+                modalOverlay.style.pointerEvents = 'none';
+            }, 300);
+        }
+
+        window.triggerAction = function(action, name) {
+            const content = modalOverlay.querySelector('.modal-content');
+            content.innerHTML = `
+                <div class="h-[500px] flex flex-col items-center justify-center text-center p-8 md:p-12">
+                    <div class="w-20 h-20 md:w-24 md:h-24 rounded-full border-4 ${action === 'Calling' ? 'border-blue-500 text-blue-500' : 'border-emerald-500 text-emerald-500'} flex items-center justify-center mb-6 animate-pulse">
+                        <i class="fas ${action === 'Calling' ? 'fa-phone' : 'fa-comment'} text-3xl md:text-4xl"></i>
+                    </div>
+                    <h2 class="text-2xl md:text-3xl font-bold text-white mb-2">${action} ${name}...</h2>
+                    <p class="text-slate-400 mb-8 font-mono text-sm">Secure Connection | Encrypted End-to-End</p>
+                    <button onclick="closeModal()" class="px-8 py-3 rounded-full bg-slate-800 hover:bg-slate-700 text-white font-bold transition-all border border-slate-600">CANCEL</button>
+                </div>
+            `;
+        }
+
+        window.showGuide = function() {
+            modalOverlay.style.opacity = 1;
+            modalOverlay.style.pointerEvents = 'auto';
+            modalOverlay.innerHTML = `
+                <div class="bg-slate-900 border border-white/10 w-full max-w-md rounded-2xl p-6 md:p-8 shadow-2xl modal-content transform scale-95 opacity-0 transition-all duration-300 mx-4">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold text-white">System Guide</h3>
+                        <button onclick="closeModal()" class="text-slate-400 hover:text-white"><i class="fas fa-times"></i></button>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-4 bg-slate-800/50 p-3 rounded-lg">
+                            <i class="fas fa-microphone text-blue-400 text-xl w-8 text-center"></i>
+                            <div class="text-sm"><strong class="text-white block">Voice Filters</strong>"Show Stable", "Show Critical", "Show Males", "Show Females"</div>
+                        </div>
+                        <div class="flex items-center gap-4 bg-slate-800/50 p-3 rounded-lg">
+                            <i class="fas fa-search text-blue-400 text-xl w-8 text-center"></i>
+                            <div class="text-sm"><strong class="text-white block">Search</strong>Use dropdowns or type to filter records.</div>
+                        </div>
+                        <div class="flex items-center gap-4 bg-slate-800/50 p-3 rounded-lg">
+                            <i class="fas fa-undo text-blue-400 text-xl w-8 text-center"></i>
+                            <div class="text-sm"><strong class="text-white block">Reset</strong>Say "Reset Filters" to clear all.</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            setTimeout(() => {
+                modalOverlay.querySelector('.modal-content').classList.remove('scale-95', 'opacity-0');
+                modalOverlay.querySelector('.modal-content').classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+
+        // --- VOICE LOGIC ---
+        const micBtn = document.getElementById('mic-btn');
+        const voiceText = document.getElementById('voice-text');
+        
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.lang = 'en-US';
+
+            micBtn.onclick = () => {
+                recognition.start();
+                micBtn.classList.add('mic-active');
+                voiceText.innerText = "LISTENING...";
+                voiceText.classList.add('text-white');
+            };
+
+            recognition.onresult = (e) => {
+                const text = e.results[0][0].transcript.toLowerCase();
+                voiceText.innerText = `CMD: "${text.toUpperCase()}"`;
+                micBtn.classList.remove('mic-active');
+                
+                // --- VOICE COMMAND MAP ---
+                if(text.includes('close')) closeModal();
+                if(text.includes('reset')) resetFilters();
+                
+                // Status Filters
+                if(text.includes('show stable')) { document.getElementById('status-filter').value = "Stable"; applyFilters(); }
+                if(text.includes('show critical')) { document.getElementById('status-filter').value = "Critical"; applyFilters(); }
+                if(text.includes('show serious')) { document.getElementById('status-filter').value = "Serious"; applyFilters(); }
+                if(text.includes('show discharged')) { document.getElementById('status-filter').value = "Discharged"; applyFilters(); }
+                
+                // Gender Filters
+                if(text.includes('show males') || text.includes('filter male')) { document.getElementById('gender-filter').value = "Male"; applyFilters(); }
+                if(text.includes('show females') || text.includes('filter female')) { document.getElementById('gender-filter').value = "Female"; applyFilters(); }
+
+                // Open Patient
+                const found = patients.find(p => text.includes(p.name.toLowerCase()));
+                if(found) openModal(found);
+
+                // Scroll
+                if (text.includes('scroll down')) window.scrollBy({ top: 500, behavior: 'smooth' });
+                if (text.includes('scroll up')) window.scrollBy({ top: -500, behavior: 'smooth' });
+
+                setTimeout(() => {
+                    voiceText.innerText = "SYSTEM READY";
+                    voiceText.classList.remove('text-white');
+                }, 3000);
+            };
+            
+            recognition.onend = () => micBtn.classList.remove('mic-active');
+        } else {
+            micBtn.style.display = 'none';
+        }
+
+        // Init
+        AOS.init({ duration: 600, once: true });
+        renderCards(patients);
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vaidya AI | Specialist Network</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Three.js & OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Custom Configuration -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        dark: {
+                            800: '#1e293b',
+                            900: '#0f172a',
+                            950: '#020617',
+                        },
+                        medical: {
+                            500: '#0ea5e9', // Sky blue
+                            600: '#0284c7',
+                            700: '#0369a1',
+                        },
+                        accent: {
+                            500: '#10b981', // Emerald
+                        }
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.3s ease-in-out',
+                        'slide-up': 'slideUp 0.3s ease-out',
+                        'scale-in': 'scaleIn 0.2s ease-out',
+                        'pop': 'pop 0.3s ease-out',
+                        'pulse-slow': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideUp: {
+                            '0%': { transform: 'translateY(20px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        },
+                        scaleIn: {
+                            '0%': { transform: 'scale(0.9)', opacity: '0' },
+                            '100%': { transform: 'scale(1)', opacity: '1' },
+                        },
+                        pop: {
+                            '0%': { transform: 'scale(1)' },
+                            '50%': { transform: 'scale(1.2)' },
+                            '100%': { transform: 'scale(1)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        body { font-family: 'Inter', sans-serif; }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        
+        #canvas-container {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 0;
+            background: radial-gradient(circle at center, #1e293b 0%, #020617 100%);
+        }
+        
+        .chat-bubble {
+            position: relative;
+            max-width: 85%;
+            padding: 12px 16px;
+            border-radius: 16px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            transition: all 0.2s;
+        }
+        
+        .chat-bubble.sent {
+            background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+            color: white;
+            border-bottom-right-radius: 4px;
+            margin-left: auto;
+            box-shadow: 0 4px 15px rgba(14, 165, 233, 0.2);
+        }
+        
+        .chat-bubble.received {
+            background-color: #1e293b;
+            color: #e2e8f0;
+            border-bottom-left-radius: 4px;
+            border: 1px solid #334155;
+        }
+
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Recording Pulse */
+        .recording-active {
+            border-color: #ef4444 !important;
+            background-color: rgba(239, 68, 68, 0.05) !important;
+        }
+        
+        /* Sound Wave Animation */
+        .wave-bar { background-color: #ef4444; animation: soundWave 0.5s ease-in-out infinite alternate; }
+        .wave-bar:nth-child(1) { animation-delay: 0.1s; height: 40%; }
+        .wave-bar:nth-child(2) { animation-delay: 0.2s; height: 80%; }
+        .wave-bar:nth-child(3) { animation-delay: 0.3s; height: 50%; }
+        .wave-bar:nth-child(4) { animation-delay: 0.1s; height: 90%; }
+        .wave-bar:nth-child(5) { animation-delay: 0.2s; height: 60%; }
+        @keyframes soundWave { 0% { transform: scaleY(0.5); } 100% { transform: scaleY(1.2); } }
+
+        /* Notification Blink */
+        .notification-blink { animation: blink 1.5s infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+        /* Success Checkmark Animation */
+        .checkmark-circle {
+            stroke-dasharray: 166;
+            stroke-dashoffset: 166;
+            stroke-width: 2;
+            stroke-miterlimit: 10;
+            stroke: #10b981;
+            fill: none;
+            animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+        }
+        .checkmark {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            display: block;
+            stroke-width: 2;
+            stroke: #fff;
+            stroke-miterlimit: 10;
+            margin: 10% auto;
+            box-shadow: inset 0px 0px 0px #10b981;
+            animation: fill .4s ease-in-out .4s forwards, scale .3s ease-in-out .9s both;
+        }
+        .checkmark-check {
+            transform-origin: 50% 50%;
+            stroke-dasharray: 48;
+            stroke-dashoffset: 48;
+            animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
+        }
+        @keyframes stroke { 100% { stroke-dashoffset: 0; } }
+        @keyframes scale { 0%, 100% { transform: none; } 50% { transform: scale3d(1.1, 1.1, 1); } }
+        @keyframes fill { 100% { box-shadow: inset 0px 0px 0px 30px #10b981; } }
+    </style>
+</head>
+<body class="bg-dark-950 h-screen flex overflow-hidden text-slate-200">
+
+    <!-- Hidden File Input -->
+    <input type="file" id="file-upload" class="hidden" />
+
+    <!-- Sidebar -->
+    <aside class="w-full md:w-80 lg:w-96 bg-dark-900 border-r border-slate-800 flex flex-col h-full z-10 shadow-2xl transition-all duration-300 absolute md:relative" id="sidebar">
+        <!-- Top Auth Bar -->
+        <div class="px-5 py-2 bg-dark-950 border-b border-slate-800 flex justify-end gap-3 text-xs font-medium">
+            <a href="login.html" onclick="handleLogout(event)" class="text-medical-500 hover:text-medical-400 transition-colors">Doctor Login</a>
+            <span class="text-slate-600">|</span>
+            <button onclick="openSupport()" class="text-slate-400 hover:text-white transition-colors">Support</button>
+        </div>
+
+        <!-- Header -->
+        <div class="p-5 border-b border-slate-800 bg-dark-900">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-medical-500 to-medical-700 flex items-center justify-center text-white shadow-lg shadow-medical-500/20">
+                    <i data-lucide="activity" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-xl text-white tracking-tight">Vaidya AI</h1>
+                    <p class="text-[10px] uppercase tracking-wider text-medical-500 font-bold">Physician Portal</p>
+                </div>
+            </div>
+            
+            <!-- Search & Voice Command -->
+            <div class="relative group flex items-center gap-2">
+                <div class="relative flex-1">
+                    <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-medical-500 transition-colors"></i>
+                    <input type="text" id="search-input" placeholder="Search specialists..." 
+                        class="w-full pl-10 pr-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-medical-500 focus:border-medical-500 transition-all">
+                </div>
+                <button onclick="startVoiceCommand()" id="voice-cmd-btn" class="p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-400 hover:text-medical-500 hover:border-medical-500 transition-all relative" title="Voice Commands (e.g., 'Call Dr. Verma')">
+                    <i data-lucide="mic" class="w-5 h-5"></i>
+                    <span id="voice-listening" class="hidden absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-ping"></span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Doctor List -->
+        <div class="flex-1 overflow-y-auto p-2 space-y-1" id="doctor-list">
+            <!-- Generated JS List -->
+        </div>
+
+        <!-- User Profile Footer -->
+        <div class="p-4 border-t border-slate-800 bg-dark-900 flex items-center justify-between">
+            <div class="flex items-center gap-3 cursor-pointer hover:bg-slate-800/50 p-1 rounded-lg transition-colors" onclick="openMyProfile()">
+                <div class="relative">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=DrYou&backgroundColor=1e293b" alt="My Profile" class="w-10 h-10 rounded-full border border-slate-600">
+                    <span class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-accent-500 border-2 border-dark-900 rounded-full"></span>
+                </div>
+                <div>
+                    <p id="footer-user-name" class="text-sm font-bold text-slate-200">Dr. You</p>
+                    <p id="footer-user-spec" class="text-xs text-slate-500">General Surgery</p>
+                </div>
+            </div>
+            
+            <!-- Footer Actions -->
+            <div class="flex items-center gap-1">
+                <button onclick="toggleNotifications()" class="p-2 hover:bg-slate-800 rounded-full text-slate-400 transition-all relative">
+                    <i data-lucide="bell" class="w-5 h-5"></i>
+                    <div class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-dark-900 notification-blink"></div>
+                </button>
+                <button onclick="openSettings()" class="p-2 hover:bg-slate-800 rounded-full text-slate-400 transition-all">
+                    <i data-lucide="settings" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Chat Area -->
+    <main class="flex-1 flex flex-col h-full relative bg-dark-950">
+        
+        <!-- 3D Background (Empty State) -->
+        <div id="empty-state" class="absolute inset-0 flex flex-col items-center justify-center z-0 overflow-hidden">
+            <div id="canvas-container"></div>
+            <!-- Overlay -->
+            <div class="z-10 text-center p-8 glass-panel rounded-3xl shadow-2xl max-w-md mx-4 animate-slide-up pointer-events-none select-none">
+                <div class="w-20 h-20 bg-slate-800/50 text-medical-500 rounded-3xl flex items-center justify-center mx-auto mb-6 border border-white/5">
+                    <i data-lucide="orbit" class="w-10 h-10 animate-spin-slow"></i>
+                </div>
+                <h2 class="text-3xl font-bold text-white mb-3">Secure Neural Link</h2>
+                <p class="text-slate-400 mb-8 leading-relaxed">Connect with 50+ verified specialists via our end-to-end encrypted network.</p>
+                <div class="grid grid-cols-2 gap-3 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    <span class="bg-slate-800/50 py-2 rounded-lg border border-slate-700 flex items-center justify-center gap-2"><i data-lucide="shield-check" class="w-3 h-3 text-accent-500"></i> Encrypted</span>
+                    <span class="bg-slate-800/50 py-2 rounded-lg border border-slate-700 flex items-center justify-center gap-2"><i data-lucide="video" class="w-3 h-3 text-medical-500"></i> HD Video</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Interface -->
+        <div id="chat-interface" class="hidden flex-col h-full z-20 glass-panel absolute inset-0 transition-all">
+            
+            <!-- Header -->
+            <header class="h-18 py-3 px-4 md:px-6 border-b border-slate-800 flex items-center justify-between bg-dark-900/90 backdrop-blur-md">
+                <div class="flex items-center gap-3">
+                    <button id="back-btn" class="md:hidden p-2 hover:bg-slate-800 rounded-full text-slate-400 transition-colors">
+                        <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                    </button>
+                    
+                    <!-- Clickable Profile Area -->
+                    <div class="flex items-center gap-3 cursor-pointer hover:bg-slate-800/50 p-1.5 rounded-lg transition-colors group" onclick="showDoctorProfile()">
+                        <div class="relative">
+                            <img id="chat-header-avatar" src="" class="w-11 h-11 rounded-full border-2 border-slate-700 bg-slate-800 object-cover">
+                            <span class="absolute bottom-0 right-0 w-3 h-3 bg-accent-500 border-2 border-dark-900 rounded-full"></span>
+                        </div>
+                        <div>
+                            <h3 id="chat-header-name" class="font-bold text-slate-100 leading-tight text-lg group-hover:text-medical-400 transition-colors"></h3>
+                            <p id="chat-header-spec" class="text-xs text-medical-500 font-semibold bg-medical-500/10 px-2 py-0.5 rounded-md inline-block mt-0.5 border border-medical-500/20"></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-2 relative">
+                    <!-- Top Notification Bell -->
+                    <div class="relative">
+                        <button onclick="toggleNotifications()" class="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-medical-400 hover:bg-slate-800 rounded-full transition-all relative">
+                            <i data-lucide="bell" class="w-5 h-5"></i>
+                            <div id="notif-badge" class="hidden absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-dark-900 notification-blink"></div>
+                        </button>
+                        
+                        <!-- Notification Dropdown -->
+                        <div id="notif-dropdown" class="hidden absolute top-12 right-0 w-80 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50 animate-scale-in origin-top-right">
+                            <div class="p-3 border-b border-slate-800 flex justify-between items-center">
+                                <h4 class="font-semibold text-sm text-white">Notifications</h4>
+                                <span id="notif-count" class="text-[10px] bg-slate-800 px-2 py-0.5 rounded-full text-slate-400">0 New</span>
+                            </div>
+                            <div id="notif-list" class="max-h-64 overflow-y-auto p-2">
+                                <div class="text-center text-slate-500 text-xs py-4">No new notifications</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="w-px h-6 bg-slate-700 mx-1"></div>
+                    
+                    <!-- Audio Call Button -->
+                    <button onclick="startCall('audio')" class="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-medical-400 hover:bg-slate-800 rounded-full transition-all" title="Audio Call">
+                        <i data-lucide="phone" class="w-5 h-5"></i>
+                    </button>
+                    
+                    <!-- Video Call Button -->
+                    <button onclick="startCall('video')" class="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-medical-400 hover:bg-slate-800 rounded-full transition-all" title="Video Call">
+                        <i data-lucide="video" class="w-5 h-5"></i>
+                    </button>
+                    
+                    <!-- 3 Dots Menu -->
+                    <button onclick="toggleMenu()" class="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-all">
+                        <i data-lucide="more-vertical" class="w-5 h-5"></i>
+                    </button>
+
+                    <!-- Menu Dropdown -->
+                    <div id="options-menu" class="hidden absolute top-12 right-0 w-48 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl py-1 z-50 animate-scale-in origin-top-right">
+                        <a href="#" onclick="showDoctorProfile()" class="block px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white">View Profile</a>
+                        <a href="#" onclick="showCallHistoryFromProfile()" class="block px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white">View Call History</a>
+                        <div class="h-px bg-slate-700 my-1"></div>
+                        <a href="#" onclick="clearChat()" class="block px-4 py-2 text-sm text-red-400 hover:bg-slate-700 hover:text-red-300">Clear Chat</a>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Messages -->
+            <div id="messages-container" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 scroll-smooth bg-dark-950">
+                <div class="flex justify-center py-6">
+                    <div class="bg-amber-500/10 text-amber-500 text-xs px-4 py-2 rounded-full border border-amber-500/20 flex items-center gap-2 shadow-sm backdrop-blur-sm">
+                        <i data-lucide="lock" class="w-3 h-3"></i>
+                        <span>End-to-end encrypted. HIPAA Compliant.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Input -->
+            <footer class="p-4 bg-dark-900 border-t border-slate-800">
+                <div class="flex items-end gap-3 max-w-5xl mx-auto relative">
+                    <button onclick="triggerFileUpload()" class="p-3 text-slate-400 hover:text-medical-400 hover:bg-slate-800 rounded-2xl transition-all flex-shrink-0">
+                        <i data-lucide="paperclip" class="w-5 h-5"></i>
+                    </button>
+                    
+                    <div id="input-wrapper" class="flex-1 bg-slate-800 rounded-2xl flex items-center p-1.5 focus-within:ring-2 focus-within:ring-medical-500/50 transition-all border border-slate-700 focus-within:border-medical-500 relative overflow-hidden">
+                        <!-- Sound Wave Animation -->
+                        <div id="recording-wave" class="absolute inset-0 bg-slate-900 flex items-center justify-center gap-1 hidden z-10">
+                             <span class="text-xs text-red-500 font-bold mr-3 animate-pulse">RECORDING</span>
+                             <div class="wave-bar w-1 h-3 rounded-full"></div>
+                             <div class="wave-bar w-1 h-5 rounded-full"></div>
+                             <div class="wave-bar w-1 h-4 rounded-full"></div>
+                             <div class="wave-bar w-1 h-6 rounded-full"></div>
+                             <div class="wave-bar w-1 h-3 rounded-full"></div>
+                        </div>
+                        <textarea id="message-input" rows="1" placeholder="Type a secure message..." class="w-full bg-transparent border-none focus:ring-0 px-3 py-2 text-sm text-slate-200 placeholder-slate-500 resize-none max-h-32 leading-relaxed" style="min-height: 24px;"></textarea>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <button id="voice-note-btn" onclick="toggleRecording()" class="p-3 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-2xl transition-all flex-shrink-0 relative z-20">
+                            <i data-lucide="mic" class="w-5 h-5"></i>
+                        </button>
+                        <button id="send-btn" onclick="handleSendClick()" class="p-3 bg-medical-600 hover:bg-medical-500 text-white rounded-2xl shadow-lg shadow-medical-500/20 transition-all flex-shrink-0 transform active:scale-95 z-20">
+                            <i data-lucide="send-horizontal" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    </main>
+
+    <!-- Modals -->
+    
+    <!-- Help Modal -->
+    <div id="help-modal" class="hidden fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm p-6 shadow-2xl relative">
+             <button onclick="document.getElementById('help-modal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+             <h3 class="text-xl font-bold text-white mb-4 flex items-center gap-2"><i data-lucide="help-circle" class="w-5 h-5 text-medical-500"></i> How to Use</h3>
+             <ul class="text-sm text-slate-400 space-y-2 list-disc pl-5">
+                 <li>Search for doctors or use Voice Commands.</li>
+                 <li><strong>Voice:</strong> Say "Open Dr. [Name]" to chat.</li>
+                 <li><strong>Voice:</strong> Say "Call Dr. [Name]" to video call.</li>
+                 <li>Use the paperclip to send files securely.</li>
+                 <li>Check Profile -> Call Logs for history.</li>
+             </ul>
+        </div>
+    </div>
+
+    <!-- Feedback Modal -->
+    <div id="feedback-modal" class="hidden fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm p-6 shadow-2xl relative overflow-hidden">
+             <button onclick="document.getElementById('feedback-modal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white z-10"><i data-lucide="x" class="w-5 h-5"></i></button>
+             
+             <div id="feedback-form">
+                 <h3 class="text-xl font-bold text-white mb-2">Send Feedback</h3>
+                 <p class="text-xs text-slate-500 mb-4">Rate your experience</p>
+                 
+                 <div class="flex gap-2 justify-center mb-4" id="star-rating">
+                     <button onclick="rate(1)" class="star-btn text-slate-600 transition-transform hover:scale-110"><i data-lucide="star" class="w-6 h-6"></i></button>
+                     <button onclick="rate(2)" class="star-btn text-slate-600 transition-transform hover:scale-110"><i data-lucide="star" class="w-6 h-6"></i></button>
+                     <button onclick="rate(3)" class="star-btn text-slate-600 transition-transform hover:scale-110"><i data-lucide="star" class="w-6 h-6"></i></button>
+                     <button onclick="rate(4)" class="star-btn text-slate-600 transition-transform hover:scale-110"><i data-lucide="star" class="w-6 h-6"></i></button>
+                     <button onclick="rate(5)" class="star-btn text-slate-600 transition-transform hover:scale-110"><i data-lucide="star" class="w-6 h-6"></i></button>
+                 </div>
+
+                 <textarea id="feedback-text" rows="3" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-sm text-white mb-4" placeholder="Tell us what you think..."></textarea>
+                 <button onclick="submitFeedback()" class="w-full py-2 bg-medical-600 hover:bg-medical-500 text-white rounded-lg font-medium">Submit Feedback</button>
+             </div>
+
+             <div id="feedback-success" class="hidden flex-col items-center justify-center py-4">
+                 <div class="checkmark">
+                    <svg class="checkmark-circle" viewBox="0 0 52 52"><circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none"/></svg>
+                    <svg class="checkmark-check" viewBox="0 0 52 52"><path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/></svg>
+                 </div>
+                 <h4 class="text-emerald-500 font-bold text-lg mt-4">Submitted!</h4>
+                 <p class="text-slate-400 text-xs">Thank you for your feedback.</p>
+             </div>
+        </div>
+    </div>
+
+    <!-- Privacy Modal -->
+    <div id="privacy-modal" class="hidden fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm p-6 shadow-2xl relative">
+             <button onclick="document.getElementById('privacy-modal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+             <h3 class="text-xl font-bold text-white mb-4 flex items-center gap-2"><i data-lucide="shield" class="w-5 h-5 text-medical-500"></i> Privacy & Security</h3>
+             <p class="text-sm text-slate-400 leading-relaxed mb-4">Your chats are end-to-end encrypted. We comply with HIPAA regulations. Data is stored securely on cloud servers with AES-256 encryption.</p>
+             <button onclick="document.getElementById('privacy-modal').classList.add('hidden')" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg">Close</button>
+        </div>
+    </div>
+
+    <!-- Call History Modal -->
+    <div id="call-history-modal" class="hidden fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-6 shadow-2xl relative animate-scale-in">
+             <button onclick="document.getElementById('call-history-modal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+             <div class="flex items-center gap-3 mb-4">
+                 <div class="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center text-medical-500">
+                     <i data-lucide="history" class="w-5 h-5"></i>
+                 </div>
+                 <div>
+                     <h3 class="text-lg font-bold text-white">Call History</h3>
+                     <p class="text-xs text-slate-500" id="history-doctor-name">With Doctor</p>
+                 </div>
+             </div>
+             <div class="space-y-2 max-h-64 overflow-y-auto pr-1" id="history-list">
+                 <!-- JS Populated -->
+             </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="hidden fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl animate-scale-in relative">
+            <div class="p-4 border-b border-slate-800 flex justify-between items-center">
+                <h3 class="font-bold text-white">Settings</h3>
+                <button onclick="closeSettings()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="p-2">
+                <button onclick="openMyProfile()" class="w-full text-left p-3 hover:bg-slate-800 rounded-xl flex items-center gap-3 transition-colors mb-1">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=DrYou&backgroundColor=1e293b" class="w-10 h-10 rounded-full border border-slate-600">
+                    <div><p class="font-semibold text-white text-sm">My Profile</p></div>
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-slate-500 ml-auto"></i>
+                </button>
+                <div class="h-px bg-slate-800 my-1 mx-2"></div>
+                <button onclick="toggleNotificationsFromSettings()" class="w-full text-left p-3 hover:bg-slate-800 rounded-xl flex items-center gap-3 transition-colors text-sm text-slate-300"><i data-lucide="bell" class="w-5 h-5 text-slate-400"></i> Notifications</button>
+                <button onclick="openPrivacy()" class="w-full text-left p-3 hover:bg-slate-800 rounded-xl flex items-center gap-3 transition-colors text-sm text-slate-300"><i data-lucide="shield" class="w-5 h-5 text-slate-400"></i> Privacy & Security</button>
+                <button onclick="openHelp()" class="w-full text-left p-3 hover:bg-slate-800 rounded-xl flex items-center gap-3 transition-colors text-sm text-slate-300"><i data-lucide="help-circle" class="w-5 h-5 text-slate-400"></i> Help</button>
+                <button onclick="openFeedback()" class="w-full text-left p-3 hover:bg-slate-800 rounded-xl flex items-center gap-3 transition-colors text-sm text-slate-300"><i data-lucide="message-square" class="w-5 h-5 text-slate-400"></i> Feedback</button>
+                <div class="h-px bg-slate-800 my-1 mx-2"></div>
+                <button onclick="handleLogout(event)" class="w-full text-left p-3 hover:bg-red-900/20 rounded-xl flex items-center gap-3 transition-colors text-sm text-red-400"><i data-lucide="log-out" class="w-5 h-5"></i> Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Doctor Profile Modal -->
+    <div id="doctor-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl relative flex flex-col max-h-[85vh]">
+            <div class="h-24 bg-gradient-to-r from-medical-600 to-medical-800 relative rounded-t-2xl"><button onclick="closeDoctorProfile()" class="absolute top-3 right-3 bg-black/30 text-white p-2 rounded-full"><i data-lucide="x" class="w-5 h-5"></i></button></div>
+            <div class="px-6 pb-6 flex-1 relative bg-slate-900 rounded-b-2xl" id="modal-main-content">
+                <div class="absolute -top-12 left-6 z-20"><img id="modal-avatar" src="" class="w-24 h-24 rounded-full border-4 border-slate-900 bg-slate-800 object-cover"></div>
+                <div class="mt-14"><h2 id="modal-name" class="text-2xl font-bold text-white"></h2><p id="modal-spec" class="text-medical-400 font-medium"></p><div class="flex items-center gap-2 mt-2 text-sm text-slate-400"><i data-lucide="building-2" class="w-4 h-4"></i><span id="modal-hospital"></span></div>
+                
+                <!-- Action Buttons including new Call History -->
+                <div id="modal-actions" class="mt-6 grid grid-cols-3 gap-2">
+                    <button onclick="openScheduleForm()" class="py-2.5 rounded-lg bg-medical-600 text-white text-xs font-medium flex items-center justify-center gap-1"><i data-lucide="calendar" class="w-3 h-3"></i> Schedule</button>
+                    <button onclick="showFullHistory()" class="py-2.5 rounded-lg bg-slate-800 text-white text-xs border border-slate-700 flex items-center justify-center gap-1"><i data-lucide="file-text" class="w-3 h-3"></i> Full Bio</button>
+                    <button onclick="showCallHistoryFromProfile()" class="py-2.5 rounded-lg bg-slate-800 text-white text-xs border border-slate-700 flex items-center justify-center gap-1"><i data-lucide="history" class="w-3 h-3"></i> Call Logs</button>
+                </div>
+                
+                <div id="my-profile-actions" class="mt-6 hidden"><button onclick="openEditProfile()" class="w-full py-2.5 rounded-lg bg-slate-800 text-white text-sm mb-2 border border-slate-700">Edit My Details</button></div></div>
+            </div>
+            
+            <!-- Detailed History View (Updated) -->
+            <div id="modal-history-content" class="hidden px-6 py-6 flex-1 bg-slate-900 rounded-b-2xl overflow-y-auto">
+                <button onclick="hideFullHistory()" class="mb-4 text-slate-400 hover:text-white flex items-center gap-2 text-sm"><i data-lucide="arrow-left" class="w-4 h-4"></i> Back</button>
+                <h3 class="text-xl font-bold text-white mb-4">Professional History</h3>
+                
+                <div class="space-y-6 text-sm">
+                    <!-- About -->
+                    <div class="border-l-2 border-slate-700 pl-4 relative">
+                        <div class="absolute -left-[5px] top-0 w-2.5 h-2.5 rounded-full bg-medical-500"></div>
+                        <h4 class="text-medical-400 font-bold uppercase text-xs mb-1">About</h4>
+                        <p class="text-slate-300 leading-relaxed">Experienced specialist with a focus on patient-centered care. Committed to utilizing the latest medical advancements to provide optimal outcomes.</p>
+                    </div>
+
+                    <!-- Experience -->
+                    <div class="border-l-2 border-slate-700 pl-4 relative">
+                        <div class="absolute -left-[5px] top-0 w-2.5 h-2.5 rounded-full bg-slate-600"></div>
+                        <h4 class="text-medical-400 font-bold uppercase text-xs mb-2">Experience</h4>
+                        <ul class="space-y-3">
+                            <li>
+                                <p class="text-white font-semibold">Senior Consultant</p>
+                                <p class="text-slate-500 text-xs">Apollo Hospitals • 2018 - Present</p>
+                            </li>
+                            <li>
+                                <p class="text-white font-semibold">Resident Specialist</p>
+                                <p class="text-slate-500 text-xs">AIIMS Delhi • 2014 - 2018</p>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Education -->
+                    <div class="border-l-2 border-slate-700 pl-4 relative">
+                        <div class="absolute -left-[5px] top-0 w-2.5 h-2.5 rounded-full bg-slate-600"></div>
+                        <h4 class="text-medical-400 font-bold uppercase text-xs mb-2">Education</h4>
+                        <ul class="space-y-2">
+                            <li>
+                                <p class="text-white font-semibold">Doctor of Medicine (MD)</p>
+                                <p class="text-slate-500 text-xs">Harvard Medical School • 2013</p>
+                            </li>
+                            <li>
+                                <p class="text-white font-semibold">MBBS</p>
+                                <p class="text-slate-500 text-xs">Madras Medical College • 2008</p>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Certifications -->
+                    <div class="border-l-2 border-slate-700 pl-4 relative">
+                        <div class="absolute -left-[5px] top-0 w-2.5 h-2.5 rounded-full bg-slate-600"></div>
+                        <h4 class="text-medical-400 font-bold uppercase text-xs mb-2">Certifications</h4>
+                        <div class="flex flex-wrap gap-2">
+                            <span class="px-2 py-1 bg-slate-800 rounded text-xs text-slate-300 border border-slate-700">Board Certified</span>
+                            <span class="px-2 py-1 bg-slate-800 rounded text-xs text-slate-300 border border-slate-700">ACLS</span>
+                            <span class="px-2 py-1 bg-slate-800 rounded text-xs text-slate-300 border border-slate-700">BLS</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="modal-schedule-content" class="hidden px-6 py-6 flex-1 bg-slate-900 rounded-b-2xl"><button onclick="hideScheduleForm()" class="mb-4 text-slate-400"><i data-lucide="arrow-left" class="w-5 h-5"></i></button><input type="date" id="consult-date" class="w-full bg-slate-800 border border-slate-700 rounded mb-2 p-2 text-white"><input type="time" id="consult-time" class="w-full bg-slate-800 border border-slate-700 rounded mb-2 p-2 text-white"><textarea id="consult-reason" class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white" placeholder="Reason"></textarea><button onclick="sendConsultRequest()" class="w-full bg-medical-600 text-white py-2 rounded mt-2">Send</button></div>
+        </div>
+    </div>
+
+    <!-- Edit Profile Modal -->
+    <div id="edit-profile-modal" class="hidden fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm p-6 relative"><button onclick="document.getElementById('edit-profile-modal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400"><i data-lucide="x" class="w-5 h-5"></i></button><h3 class="text-white font-bold mb-4">Edit Profile</h3><input type="text" id="edit-name" class="w-full bg-slate-800 border-slate-700 rounded p-2 text-white mb-2"><input type="text" id="edit-spec" class="w-full bg-slate-800 border-slate-700 rounded p-2 text-white mb-2"><input type="text" id="edit-hospital" class="w-full bg-slate-800 border-slate-700 rounded p-2 text-white mb-2"><button onclick="saveProfile()" class="w-full bg-medical-600 text-white py-2 rounded">Save</button></div>
+    </div>
+
+    <div id="support-modal" class="hidden fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm p-6 relative"><button onclick="closeSupport()" class="absolute top-4 right-4 text-slate-400"><i data-lucide="x" class="w-5 h-5"></i></button><h3 class="text-white font-bold mb-2">Support</h3><p class="text-slate-400 text-sm">Call: +1-800-123-4567</p></div>
+    </div>
+
+    <!-- Call Modal -->
+    <div id="call-modal" class="fixed inset-0 z-50 bg-slate-950 hidden flex-col">
+        <div class="absolute top-0 w-full p-6 flex justify-between items-center z-20 text-slate-300"><div class="flex gap-2"><i data-lucide="shield-check" class="w-4 h-4"></i> Encrypted</div><span id="call-timer">00:00</span></div>
+        <div class="flex-1 flex items-center justify-center relative"><div class="text-center z-10 animate-fade-in"><img id="call-user-avatar" src="" class="w-32 h-32 rounded-full border-4 border-slate-800 mb-4 shadow-2xl"><h2 id="call-user-name" class="text-2xl font-bold text-white"></h2><p class="text-medical-500 animate-pulse">Connecting...</p></div><video id="self-video" autoplay muted playsinline class="absolute bottom-24 right-6 w-32 h-48 bg-black rounded-xl border border-slate-700 shadow-xl hidden"></video></div>
+        <div class="p-8 flex justify-center"><button onclick="endCall()" class="w-16 h-16 bg-red-600 hover:bg-red-500 rounded-full text-white shadow-lg flex items-center justify-center"><i data-lucide="phone-off" class="w-8 h-8"></i></button></div>
+    </div>
+
+    <script>
+        /* BACKEND INTEGRATION SCOPE
+           1. Users: POST /api/login (Auth), GET /api/user/{id} (Profile)
+           2. Doctors: GET /api/doctors (List), GET /api/doctor/{id}/history (Call History)
+           3. Chat: GET /api/messages/{docId}, POST /api/messages/send
+           4. Calls: POST /api/call/start, POST /api/call/end
+           5. Feedback: POST /api/feedback
+        */
+
+        // --- CONFIG & DATA ---
+        const doctors = Array.from({length: 50}, (_, i) => ({
+            id: i + 1,
+            name: `Dr. ${['Rajesh','Anita','Vikram','Priya','Sameer'][i%5]} ${['Verma','Desai','Singh','Reddy','Shah'][i%5]}`,
+            spec: ["Cardiologist", "Neurologist", "Orthopedist", "Oncologist", "Pediatrician"][i % 5],
+            hospital: ["Apollo", "Max Health", "Fortis", "AIIMS", "Medanta"][i % 5],
+            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=Dr${i}&backgroundColor=1e293b`,
+            online: Math.random() > 0.5
+        }));
+        
+        let currentUser = { name: "Dr. You", spec: "General Surgery", hospital: "Vaidya AI Main Hub" };
+        let activeChatId = null; const messages = {}; let notifications = [];
+        let mediaRecorder = null; let audioChunks = []; let isRecording = false; let callTimerInterval;
+
+        // --- DOM ELEMENTS ---
+        const els = {
+            list: document.getElementById('doctor-list'),
+            chat: document.getElementById('chat-interface'),
+            empty: document.getElementById('empty-state'),
+            msgs: document.getElementById('messages-container'),
+            input: document.getElementById('message-input'),
+            menu: document.getElementById('options-menu'),
+            docModal: document.getElementById('doctor-modal'),
+            recInd: document.getElementById('recording-wave'), 
+            voiceBtn: document.getElementById('voice-note-btn'),
+            fileInput: document.getElementById('file-upload'),
+            inputWrapper: document.getElementById('input-wrapper'),
+            modalMain: document.getElementById('modal-main-content'),
+            modalHistory: document.getElementById('modal-history-content'),
+            modalSchedule: document.getElementById('modal-schedule-content'),
+            modalActions: document.getElementById('modal-actions'),
+            myProfileActions: document.getElementById('my-profile-actions'),
+            supportModal: document.getElementById('support-modal'),
+            settingsModal: document.getElementById('settings-modal'),
+            callModal: document.getElementById('call-modal'),
+            callName: document.getElementById('call-user-name'),
+            callAvatar: document.getElementById('call-user-avatar'),
+            selfVideo: document.getElementById('self-video'),
+            callTimer: document.getElementById('call-timer'),
+            notifDropdown: document.getElementById('notif-dropdown'),
+            notifBadge: document.getElementById('notif-badge'),
+            notifList: document.getElementById('notif-list'),
+            notifCount: document.getElementById('notif-count'),
+            footerName: document.getElementById('footer-user-name'),
+            footerSpec: document.getElementById('footer-user-spec')
+        };
+
+        // --- INIT ---
+        renderDoctors();
+
+        // --- LOGOUT ---
+        function handleLogout(e) {
+            e.preventDefault();
+            /* BACKEND: Call /api/logout */
+            try { window.location.href = 'login.html'; } 
+            catch(err) { alert("Logged out. Redirecting to Login..."); }
+        }
+
+        // --- FEEDBACK ---
+        let currentRating = 0;
+        function openFeedback() {
+            closeSettings();
+            document.getElementById('feedback-modal').classList.remove('hidden');
+            document.getElementById('feedback-form').classList.remove('hidden');
+            document.getElementById('feedback-success').classList.add('hidden');
+            document.getElementById('feedback-success').classList.remove('flex');
+            rate(0);
+        }
+        function rate(stars) {
+            currentRating = stars;
+            const buttons = document.querySelectorAll('#star-rating button');
+            buttons.forEach((btn, index) => {
+                const icon = btn.querySelector('svg') || btn.querySelector('i');
+                if (icon) {
+                    if (index < stars) {
+                        icon.classList.add('fill-yellow-400', 'text-yellow-400');
+                        icon.classList.remove('text-slate-600');
+                        btn.classList.add('scale-125'); setTimeout(() => btn.classList.remove('scale-125'), 200);
+                    } else {
+                        icon.classList.remove('fill-yellow-400', 'text-yellow-400');
+                        icon.classList.add('text-slate-600');
+                    }
+                }
+            });
+        }
+        function submitFeedback() {
+            /* BACKEND: POST /api/feedback { rating: currentRating, text: ... } */
+            const text = document.getElementById('feedback-text').value;
+            if(!text && currentRating === 0) return alert("Please rate or write feedback.");
+            document.getElementById('feedback-form').classList.add('hidden');
+            document.getElementById('feedback-success').classList.remove('hidden');
+            document.getElementById('feedback-success').classList.add('flex');
+            setTimeout(() => { document.getElementById('feedback-modal').classList.add('hidden'); }, 2500);
+        }
+
+        // --- CALL HISTORY (USER SPECIFIC) ---
+        function showCallHistoryFromProfile() {
+            // Wrapper to call the main history function while ensuring the modal is handled correctly
+            closeDoctorProfile(); // Close profile to show history clearly on top
+            showCallHistory();
+        }
+
+        function showCallHistory() {
+            const list = document.getElementById('history-list');
+            const doc = doctors.find(d => d.id === activeChatId);
+            document.getElementById('history-doctor-name').innerText = doc ? `With ${doc.name}` : 'Recent Calls';
+            
+            list.innerHTML = '';
+            /* BACKEND: Fetch /api/history?userId=current&docId=activeChatId */
+            
+            // REAL-TIME MOCK DATA GENERATOR
+            const now = new Date();
+            const dates = [
+                new Date(now.getTime() - 1000 * 60 * 30), // 30 mins ago
+                new Date(now.getTime() - 1000 * 60 * 60 * 24), // 1 day ago
+                new Date(now.getTime() - 1000 * 60 * 60 * 24 * 5) // 5 days ago
+            ];
+
+            const history = [
+                { type: 'video', label: 'Video Call', date: dates[0].toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}), duration: '15m 20s', status: 'Outgoing', color: 'medical-500' },
+                { type: 'phone-missed', label: 'Missed Call', date: dates[1].toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}), duration: '-', status: 'Missed', color: 'red-500' },
+                { type: 'phone', label: 'Voice Call', date: dates[2].toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}), duration: '4m 05s', status: 'Incoming', color: 'emerald-500' }
+            ];
+
+            history.forEach(item => {
+                const el = document.createElement('div');
+                el.className = 'flex items-center justify-between p-3 bg-slate-800 rounded-xl border border-slate-700 mb-2';
+                el.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-${item.color}/10 text-${item.color} flex items-center justify-center border border-${item.color}/20">
+                            <i data-lucide="${item.type.includes('video') ? 'video' : 'phone'}" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-white">${item.label}</p>
+                            <p class="text-[10px] text-slate-500 flex items-center gap-1">
+                                <i data-lucide="${item.status === 'Outgoing' ? 'arrow-up-right' : (item.status === 'Missed' ? 'x' : 'arrow-down-left')}" class="w-3 h-3"></i>
+                                ${item.date}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-xs text-slate-400 font-mono block">${item.duration}</span>
+                        <span class="text-[10px] text-${item.color}">${item.status}</span>
+                    </div>
+                `;
+                list.appendChild(el);
+            });
+            lucide.createIcons();
+            document.getElementById('call-history-modal').classList.remove('hidden');
+            els.menu.classList.add('hidden');
+        }
+
+        // --- VOICE COMMANDS ---
+        function startVoiceCommand() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) { alert("Voice commands not supported."); return; }
+            const recognition = new SpeechRecognition();
+            const indicator = document.getElementById('voice-listening');
+            
+            recognition.onstart = () => { indicator.classList.remove('hidden'); };
+            recognition.onend = () => { indicator.classList.add('hidden'); };
+            recognition.onresult = (event) => {
+                const command = event.results[0][0].transcript.toLowerCase();
+                if (command.includes("open") || command.includes("chat")) {
+                    const target = doctors.find(d => command.includes(d.name.toLowerCase().split(' ')[1].toLowerCase()));
+                    if (target) openChat(target); else alert("Doctor not found.");
+                } else if (command.includes("call")) {
+                    const target = doctors.find(d => command.includes(d.name.toLowerCase().split(' ')[1].toLowerCase()));
+                    if (target) { activeChatId = target.id; startCall('video'); } else alert("Doctor not found.");
+                } else { alert("Try 'Open Dr. Rajesh' or 'Call Dr. Anita'."); }
+            };
+            recognition.start();
+        }
+
+        // --- STANDARD FUNCTIONS ---
+        function renderDoctors(filter = "") {
+            els.list.innerHTML = "";
+            const filtered = doctors.filter(d => d.name.toLowerCase().includes(filter.toLowerCase()));
+            filtered.forEach(doc => {
+                const div = document.createElement('div');
+                div.className = `p-3 rounded-xl cursor-pointer transition-all mb-1 flex items-center gap-3 border ${activeChatId === doc.id ? 'bg-medical-500/10 border-medical-500/30' : 'hover:bg-slate-800 border-transparent'}`;
+                div.onclick = () => openChat(doc);
+                div.innerHTML = `<div class="relative"><img src="${doc.avatar}" class="w-12 h-12 rounded-full bg-slate-800 object-cover">${doc.online ? '<span class="absolute bottom-0 right-0 w-3 h-3 bg-accent-500 border-2 border-dark-900 rounded-full"></span>' : ''}</div><div class="flex-1 overflow-hidden"><h4 class="font-semibold text-slate-200 truncate text-sm">${doc.name}</h4><p class="text-xs text-medical-500 truncate">${doc.spec}</p></div>`;
+                els.list.appendChild(div);
+            });
+            lucide.createIcons();
+        }
+        function openChat(doc) {
+            activeChatId = doc.id; els.empty.classList.add('hidden'); els.chat.classList.remove('hidden'); els.chat.classList.add('flex');
+            document.getElementById('chat-header-name').innerText = doc.name; document.getElementById('chat-header-spec').innerText = doc.spec; document.getElementById('chat-header-avatar').src = doc.avatar;
+            updateModalContent(doc, false);
+            if(window.innerWidth < 768) document.getElementById('sidebar').classList.add('-translate-x-full', 'absolute');
+            renderMessages();
+        }
+        function updateModalContent(doc, isMe) {
+            document.getElementById('modal-name').innerText = doc.name; document.getElementById('modal-spec').innerText = doc.spec; document.getElementById('modal-hospital').innerText = doc.hospital; document.getElementById('modal-avatar').src = doc.avatar;
+            if(isMe) { els.modalActions.classList.add('hidden'); els.myProfileActions.classList.remove('hidden'); } else { els.modalActions.classList.remove('hidden'); els.myProfileActions.classList.add('hidden'); }
+        }
+        function renderMessages() {
+            /* BACKEND: GET /api/messages/{activeChatId} */
+            els.msgs.innerHTML = `<div class="flex justify-center py-6"><div class="bg-amber-500/10 text-amber-500 text-xs px-4 py-2 rounded-full border border-amber-500/20 flex items-center gap-2"><i data-lucide="lock" class="w-3 h-3"></i> <span>End-to-end encrypted.</span></div></div>`;
+            (messages[activeChatId] || []).forEach(addMessageToUI); els.msgs.scrollTop = els.msgs.scrollHeight;
+        }
+        function addMessageToUI(msg) {
+            const div = document.createElement('div'); div.className = `chat-bubble ${msg.type} animate-slide-up flex flex-col mb-4`;
+            let contentHtml = `<span>${msg.text}</span>`;
+            if(msg.isAudio && msg.audioUrl) contentHtml = `<div class="flex items-center gap-3 min-w-[180px]"><button onclick="playAudio(this, '${msg.audioUrl}')" class="p-2.5 rounded-full bg-white/20 hover:bg-white/30"><i data-lucide="play" class="w-4 h-4 fill-current"></i></button><div class="flex-1 flex flex-col gap-1"><div class="h-1 bg-white/30 rounded-full w-full"><div class="h-full bg-white w-1/3 rounded-full"></div></div><span class="text-[10px] font-mono opacity-80">Voice Note</span></div><audio src="${msg.audioUrl}" class="hidden"></audio></div>`;
+            div.innerHTML = `${contentHtml}<div class="text-[10px] opacity-60 mt-1 text-right">${msg.time}</div>`;
+            els.msgs.appendChild(div); lucide.createIcons();
+        }
+        function openSettings() { els.settingsModal.classList.remove('hidden'); } function closeSettings() { els.settingsModal.classList.add('hidden'); }
+        function toggleNotificationsFromSettings() { closeSettings(); toggleNotifications(); }
+        function openPrivacy() { closeSettings(); document.getElementById('privacy-modal').classList.remove('hidden'); }
+        function openHelp() { closeSettings(); document.getElementById('help-modal').classList.remove('hidden'); }
+        function openEditProfile() { document.getElementById('edit-name').value = currentUser.name; document.getElementById('edit-spec').value = currentUser.spec; document.getElementById('edit-hospital').value = currentUser.hospital; closeDoctorProfile(); document.getElementById('edit-profile-modal').classList.remove('hidden'); }
+        function saveProfile() { 
+            /* BACKEND: POST /api/profile/update */
+            currentUser.name = document.getElementById('edit-name').value; currentUser.spec = document.getElementById('edit-spec').value; currentUser.hospital = document.getElementById('edit-hospital').value; els.footerName.innerText = currentUser.name; els.footerSpec.innerText = currentUser.spec; document.getElementById('edit-profile-modal').classList.add('hidden'); openMyProfile(); 
+        }
+        function openMyProfile() { closeSettings(); const me = { name: currentUser.name, spec: currentUser.spec, hospital: currentUser.hospital, avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=DrYou&backgroundColor=1e293b" }; updateModalContent(me, true); hideFullHistory(); hideScheduleForm(); els.docModal.classList.remove('hidden'); }
+        function toggleNotifications() { els.notifDropdown.classList.toggle('hidden'); els.notifBadge.classList.remove('notification-blink'); }
+        function openSupport() { els.supportModal.classList.remove('hidden'); } function closeSupport() { els.supportModal.classList.add('hidden'); }
+        function handleSendClick() { if (isRecording) { if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop(); else sendMessage(null, true, null); isRecording = false; els.recInd.classList.add('hidden'); els.recInd.classList.remove('flex'); els.voiceBtn.classList.remove('text-red-500'); els.inputWrapper.classList.remove('recording-active'); } else { sendMessage(); } }
+        async function toggleRecording() { if (!isRecording) { try { const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); mediaRecorder = new MediaRecorder(stream); audioChunks = []; mediaRecorder.ondataavailable = e => audioChunks.push(e.data); mediaRecorder.onstop = () => { const audioBlob = new Blob(audioChunks, { type: 'audio/webm' }); sendMessage(null, true, URL.createObjectURL(audioBlob)); }; mediaRecorder.start(); isRecording = true; els.recInd.classList.remove('hidden'); els.recInd.classList.add('flex'); els.voiceBtn.classList.add('text-red-500'); els.inputWrapper.classList.add('recording-active'); } catch(err) { alert("Mic access needed. Simulating..."); isRecording = true; els.recInd.classList.remove('hidden'); els.recInd.classList.add('flex'); } } else { alert("Press SEND to finish recording."); } }
+        function sendMessage(text = null, isAudio = false, audioUrl = null) { const content = text || els.input.value.trim(); if (!content && !isAudio) return; if (!messages[activeChatId]) messages[activeChatId] = []; const msg = { type: 'sent', text: isAudio ? 'Voice Note' : content, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}), isAudio, audioUrl }; messages[activeChatId].push(msg); addMessageToUI(msg); if(!isAudio) els.input.value = ''; els.msgs.scrollTop = els.msgs.scrollHeight; }
+        function playAudio(btn, url) { const audio = btn.parentElement.querySelector('audio'); const icon = btn.querySelector('i'); if (audio.paused) { document.querySelectorAll('audio').forEach(a => { if(a !== audio) { a.pause(); a.currentTime = 0; }}); if(url) audio.src = url; audio.play().catch(e => console.log(e)); icon.setAttribute('data-lucide', 'pause'); audio.onended = () => { icon.setAttribute('data-lucide', 'play'); lucide.createIcons(); }; } else { audio.pause(); icon.setAttribute('data-lucide', 'play'); } lucide.createIcons(); }
+        function openScheduleForm() { els.modalMain.classList.add('hidden'); els.modalSchedule.classList.remove('hidden'); } function hideScheduleForm() { els.modalSchedule.classList.add('hidden'); els.modalMain.classList.remove('hidden'); }
+        function sendConsultRequest() { alert("Request Sent!"); closeDoctorProfile(); setTimeout(() => { notifications.unshift({id:Date.now(), from:"Dr. Rajesh", msg:"Requested consult", time:"Now"}); els.notifBadge.classList.remove('hidden'); els.notifCount.innerText = "1 New"; }, 2000); }
+        function showDoctorProfile() { const doc = doctors.find(d => d.id === activeChatId); if(doc) { updateModalContent(doc, false); els.docModal.classList.remove('hidden'); hideFullHistory(); hideScheduleForm(); } } function closeDoctorProfile() { els.docModal.classList.add('hidden'); } function showFullHistory() { els.modalMain.classList.add('hidden'); els.modalHistory.classList.remove('hidden'); } function hideFullHistory() { els.modalHistory.classList.add('hidden'); els.modalMain.classList.remove('hidden'); }
+        
+        // --- CALL HANDLING ---
+        function startCall(type) { 
+            const doc = doctors.find(d => d.id === activeChatId); 
+            if(!doc) return; 
+            els.callName.textContent = doc.name; 
+            els.callAvatar.src = doc.avatar; 
+            els.callModal.classList.remove('hidden'); 
+            els.callModal.classList.add('flex'); 
+            
+            // Separate Video vs Audio Logic
+            if(type === 'video') { 
+                els.selfVideo.classList.remove('hidden'); 
+                // Request Cam & Mic
+                if(navigator.mediaDevices?.getUserMedia) navigator.mediaDevices.getUserMedia({video:true, audio:true}).then(s=>els.selfVideo.srcObject=s); 
+            } else { 
+                // Audio Only - Hide Video, Show Avatar Animation
+                els.selfVideo.classList.add('hidden');
+                // Request Mic Only
+                if(navigator.mediaDevices?.getUserMedia) navigator.mediaDevices.getUserMedia({audio:true}).catch(e=>console.log(e));
+            }
+            
+            let seconds = 0; els.callTimer.textContent = "Connecting..."; clearInterval(callTimerInterval);
+            setTimeout(() => {
+                els.callTimer.textContent = "00:00";
+                callTimerInterval = setInterval(() => { seconds++; els.callTimer.textContent = `${Math.floor(seconds/60).toString().padStart(2,'0')}:${(seconds%60).toString().padStart(2,'0')}`; }, 1000);
+            }, 1500);
+        } 
+        
+        function endCall() { 
+            /* BACKEND: POST /api/call/end */
+            els.callModal.classList.add('hidden'); 
+            els.callModal.classList.remove('flex'); 
+            clearInterval(callTimerInterval);
+            if(els.selfVideo.srcObject) {
+                els.selfVideo.srcObject.getTracks().forEach(t=>t.stop());
+                els.selfVideo.srcObject = null;
+            }
+        }
+
+        function triggerFileUpload() { els.fileInput.click(); } els.fileInput.addEventListener('change', (e) => { if(e.target.files.length) sendMessage(`Sent file: ${e.target.files[0].name}`); }); function toggleMenu() { els.menu.classList.toggle('hidden'); } function clearChat() { messages[activeChatId]=[]; renderMessages(); toggleMenu(); } document.addEventListener('click', (e) => { if(!els.menu.contains(e.target) && !e.target.closest('button')?.contains(els.menu)) els.menu.classList.add('hidden'); }); document.getElementById('search-input').addEventListener('input', (e) => renderDoctors(e.target.value)); document.getElementById('message-input').addEventListener('keypress', (e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendClick(); }}); document.getElementById('back-btn').addEventListener('click', () => { els.chat.classList.add('hidden'); els.empty.classList.remove('hidden'); document.getElementById('sidebar').classList.remove('-translate-x-full', 'absolute'); });
+        function initThree() { const container = document.getElementById('canvas-container'); if(!container) return; const scene = new THREE.Scene(); const camera = new THREE.PerspectiveCamera(75, container.clientWidth/container.clientHeight, 0.1, 1000); const renderer = new THREE.WebGLRenderer({alpha: true, antialias: true}); renderer.setSize(container.clientWidth, container.clientHeight); container.appendChild(renderer.domElement); const particles = new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(2400).map(() => (Math.random()-0.5)*35), 3)), new THREE.PointsMaterial({size: 0.05, color: 0x0ea5e9, transparent: true, opacity: 0.5})); scene.add(particles); const network = new THREE.LineSegments(new THREE.WireframeGeometry(new THREE.IcosahedronGeometry(5, 1)), new THREE.LineBasicMaterial({ color: 0x0f172a, transparent: true, opacity: 0.15 })); scene.add(network); camera.position.z = 10; const controls = new THREE.OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.autoRotate = true; controls.autoRotateSpeed = 1.2; function animate() { requestAnimationFrame(animate); particles.rotation.y += 0.0015; network.rotation.x += 0.001; controls.update(); renderer.render(scene, camera); } animate(); window.addEventListener('resize', () => { camera.aspect = container.clientWidth/container.clientHeight; camera.updateProjectionMatrix(); renderer.setSize(container.clientWidth, container.clientHeight); }); } initThree();
+    </script>
+</body>
+</html>

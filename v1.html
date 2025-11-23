@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Vaidya AI Analytical Dashboard V8</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #1f2937 0%, #0d1a26 100%);
+            color: #f3f4f6;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            touch-action: pan-y;
+        }
+        #three-container {
+            width: 100%;
+            height: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 0; 
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+            pointer-events: none; 
+        }
+        #dashboard-overlay {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            height: 100vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+            pointer-events: auto;
+        }
+        #dashboard-overlay::-webkit-scrollbar { width: 6px; }
+        #dashboard-overlay::-webkit-scrollbar-track { background: rgba(31, 41, 55, 0.5); }
+        #dashboard-overlay::-webkit-scrollbar-thumb { background: rgba(75, 85, 99, 0.8); border-radius: 3px; }
+
+        .interactive-element { pointer-events: auto; transition: all 0.3s ease; }
+        .metric-card { backdrop-filter: blur(12px); background-color: rgba(30, 41, 59, 0.75); border: 1px solid rgba(75, 85, 99, 0.5); }
+        
+        .highlight-active {
+            border-color: #60a5fa !important;
+            box-shadow: 0 0 20px rgba(96, 165, 250, 0.6) !important;
+            transform: scale(1.05);
+            z-index: 50;
+            background-color: rgba(30, 41, 59, 0.95);
+        }
+
+        .chart-title { color: #93c5fd; }
+        
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+            100% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+        }
+        .voice-active { animation: pulse-ring 2s infinite; }
+        
+        .cursor-grab { cursor: grab; cursor: -webkit-grab; }
+        .cursor-grabbing { cursor: grabbing; cursor: -webkit-grabbing; }
+    </style>
+    <!-- Three.js & GSAP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+</head>
+<body>
+
+    <div id="three-container"></div>
+
+    <div id="dashboard-overlay">
+        <div class="content-wrapper container mx-auto p-4 sm:p-6 max-w-7xl">
+            
+            <header id="header-section" class="interactive-element flex flex-col md:flex-row justify-between items-start md:items-center mb-6 opacity-0 translate-y-[-10px]">
+                <div class="mb-4 md:mb-0">
+                    <h1 class="text-2xl sm:text-3xl font-extrabold text-blue-400 tracking-tight">Vaidya AI <span class="text-white">Dashboard V1</span></h1>
+                    <p class="text-xs text-gray-400 mt-1">Real-time practice analytics</p>
+                </div>
+                
+                <div class="flex flex-col sm:flex-row gap-3 items-end sm:items-center">
+                    <blockquote class="text-xs sm:text-sm italic text-gray-300 border-l-2 border-blue-500 pl-3 max-w-xs hidden sm:block">
+                        "The art of medicine consists of amusing the patient while nature cures the disease."
+                    </blockquote>
+                    
+                    <button id="voice-tour-btn" onclick="toggleVoiceTour()" class="interactive-element flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 px-4 rounded-full transition-all shadow-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                        </svg>
+                        <span>Voice Tour</span>
+                    </button>
+                </div>
+            </header>
+
+            <section id="metrics-section" class="interactive-element grid grid-cols-2 md:grid-cols-4 gap-3 mb-6 opacity-0">
+                <div id="card-rmp" class="metric-card p-3 rounded-lg shadow-md">
+                    <p class="text-[10px] sm:text-xs font-medium text-gray-400 uppercase tracking-wider">RMP Doctors</p>
+                    <p class="text-xl sm:text-2xl font-bold text-green-400 mt-1" id="rmp-count">0</p>
+                </div>
+                <div id="card-engaged" class="metric-card p-3 rounded-lg shadow-md">
+                    <p class="text-[10px] sm:text-xs font-medium text-gray-400 uppercase tracking-wider">Patient Engagement</p>
+                    <p class="text-xl sm:text-2xl font-bold text-yellow-400 mt-1" id="engaged-count">0</p>
+                </div>
+                <div id="card-views" class="metric-card p-3 rounded-lg shadow-md">
+                    <p class="text-[10px] sm:text-xs font-medium text-gray-400 uppercase tracking-wider">Views (30d)</p>
+                    <p class="text-xl sm:text-2xl font-bold text-indigo-400 mt-1" id="views-count">0</p>
+                </div>
+                <div id="card-shares" class="metric-card p-3 rounded-lg shadow-md">
+                    <p class="text-[10px] sm:text-xs font-medium text-gray-400 uppercase tracking-wider">Shares (30d)</p>
+                    <p class="text-xl sm:text-2xl font-bold text-red-400 mt-1" id="shares-count">0</p>
+                </div>
+            </section>
+
+            <section id="chart-legend-section" class="interactive-element grid grid-cols-1 md:grid-cols-3 gap-4 opacity-0">
+                <div id="card-status" class="md:col-span-1">
+                    <h3 class="chart-title text-sm font-semibold mb-2">Patient Status (3D)</h3>
+                    <div class="metric-card p-3 rounded-lg shadow-md h-full min-h-[100px]">
+                        <p class="text-[10px] text-gray-400 mb-2">Interactive 3D Visualization below.</p>
+                        <div id="pie-legend" class="space-y-1 text-xs"></div>
+                    </div>
+                </div>
+                <div id="card-growth" class="md:col-span-1">
+                    <h3 class="chart-title text-sm font-semibold mb-2">Monthly Growth</h3>
+                    <div class="metric-card p-3 rounded-lg shadow-md h-full flex flex-col justify-center min-h-[100px]">
+                        <p class="text-[10px] text-gray-400">Reserved for Admissions Growth.</p>
+                        <div class="mt-2 h-1 w-full bg-gray-700 rounded-full overflow-hidden">
+                            <div class="h-full bg-blue-500 w-3/4"></div>
+                        </div>
+                    </div>
+                </div>
+                <div id="card-network" class="md:col-span-1">
+                    <h3 class="chart-title text-sm font-semibold mb-2">RMP Network</h3>
+                    <div class="metric-card p-3 rounded-lg shadow-md h-full flex flex-col justify-center min-h-[100px]">
+                        <p class="text-[10px] text-gray-400">Reserved for RMP Geospatial Data.</p>
+                        <div class="flex -space-x-2 mt-2 overflow-hidden">
+                             <div class="inline-block h-5 w-5 rounded-full ring-2 ring-slate-800 bg-gray-500"></div>
+                             <div class="inline-block h-5 w-5 rounded-full ring-2 ring-slate-800 bg-gray-600"></div>
+                             <div class="inline-block h-5 w-5 rounded-full ring-2 ring-slate-800 bg-gray-700"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <div id="chart-spacer" class="h-[400px] w-full pointer-events-none"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        let app, db, auth;
+
+        // --- DATA SOURCE ---
+        const mockData = {
+            kpis: {
+                rmpCount: 42,
+                engagedPatients: 785,
+                posterViews: 12500,
+                posterShares: 340,
+            },
+            patientStatus: [
+                { status: 'Active', value: 55, color: 0x10b981 }, // index 0 (Green/Teal)
+                { status: 'Observation', value: 25, color: 0xfacc15 }, // index 1 (Yellow)
+                { status: 'Discharged', value: 20, color: 0xef4444 }, // index 2 (Red)
+            ]
+        };
+
+        if (Object.keys(firebaseConfig).length > 0) {
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                const signIn = async () => {
+                    try {
+                        if (initialAuthToken) await signInWithCustomToken(auth, initialAuthToken);
+                        else await signInAnonymously(auth);
+                    } catch (e) { console.error("Auth error", e); }
+                };
+                signIn();
+            } catch (e) { console.error("Firebase init error", e); }
+        }
+
+        // --- THREE.JS SETUP ---
+        let scene, camera, renderer, controls, doughnutGroup;
+        let currentFloatingText = null;
+        let raycaster, mouse;
+        const container = document.getElementById('three-container');
+
+        const CAM_DEFAULT_Z_DESKTOP = 24;
+        const CAM_DEFAULT_Z_MOBILE = 32;
+        const CHART_Y_DESKTOP = -6;
+        const CHART_Y_MOBILE = -8;
+        let currentChartY = CHART_Y_DESKTOP; 
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+
+        function initThreeJS() {
+            scene = new THREE.Scene();
+            scene.background = null; 
+
+            const aspect = container.clientWidth / container.clientHeight;
+            camera = new THREE.PerspectiveCamera(60, aspect, 0.1, 1000);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+            dirLight.position.set(10, 10, 20);
+            scene.add(dirLight);
+            const blueLight = new THREE.PointLight(0x3b82f6, 0.5);
+            blueLight.position.set(-10, -5, 10);
+            scene.add(blueLight);
+
+            doughnutGroup = createPatientStatusDoughnut(mockData.patientStatus);
+            scene.add(doughnutGroup);
+
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            window.addEventListener('mousemove', onMouseMove, false);
+            window.addEventListener('mousedown', onMouseDown, false);
+            window.addEventListener('mouseup', onMouseUp, false);
+            window.addEventListener('touchstart', onTouchStart, { passive: false });
+            window.addEventListener('touchmove', onTouchMove, { passive: false });
+            window.addEventListener('touchend', onMouseUp, false);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enabled = false; 
+            controls.enableZoom = false;
+            controls.enablePan = false; 
+            controls.enableRotate = false;
+
+            window.addEventListener('resize', onWindowResize, false);
+            onWindowResize(); 
+            animate();
+        }
+
+        // --- 3D TEXT SYSTEM ---
+        function createTextSprite(message, colorHex) {
+            const fontFace = 'Inter, sans-serif';
+            const fontSize = 70; // Increased font size for visibility without zoom
+            
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            
+            // Set clear dimensions
+            canvas.width = 768; // Increased width to accommodate longer text (e.g., "Active: 55%")
+            canvas.height = 256;
+            
+            context.font = `bold ${fontSize}px ${fontFace}`;
+            
+            // Draw Text
+            context.fillStyle = typeof colorHex === 'number' ? '#' + colorHex.toString(16).padStart(6, '0') : colorHex;
+            context.textAlign = "center";
+            context.textBaseline = "middle";
+            
+            // Stronger shadow for readability
+            context.shadowColor = "rgba(0, 0, 0, 0.9)";
+            context.shadowBlur = 8;
+            context.shadowOffsetX = 4;
+            context.shadowOffsetY = 4;
+
+            context.fillText(message, canvas.width / 2, canvas.height / 2);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+            const sprite = new THREE.Sprite(material);
+            
+            // Increased scale to make it appear larger from distance
+            // Scale adjusted slightly for new canvas width
+            sprite.scale.set(20, 7.5, 1); 
+            
+            return sprite;
+        }
+
+        function showFloatingText(text, color) {
+            if (currentFloatingText) {
+                const oldText = currentFloatingText;
+                gsap.to(oldText.material, { opacity: 0, duration: 0.3, onComplete: () => scene.remove(oldText) });
+            }
+
+            const sprite = createTextSprite(text, color);
+            
+            const isMobile = window.innerWidth < 768;
+            // Adjust base height since we are not zooming in
+            const baseY = isMobile ? -1 : 1; 
+            
+            sprite.position.set(0, baseY, 0);
+            sprite.material.opacity = 0;
+
+            scene.add(sprite);
+            currentFloatingText = sprite;
+
+            gsap.to(sprite.position, { y: baseY + 2, duration: 0.8, ease: "back.out" });
+            gsap.to(sprite.material, { opacity: 1, duration: 0.5 });
+        }
+
+        function hideFloatingText() {
+            if (currentFloatingText) {
+                gsap.to(currentFloatingText.material, { opacity: 0, duration: 0.5, onComplete: () => {
+                    scene.remove(currentFloatingText);
+                    currentFloatingText = null;
+                }});
+            }
+        }
+
+
+        // --- INTERACTION LOGIC ---
+        function getNormalizedCoordinates(clientX, clientY) {
+            mouse.x = (clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+        }
+
+        function checkIntersection() {
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(doughnutGroup.children);
+            return intersects.length > 0;
+        }
+
+        function onMouseDown(e) {
+            getNormalizedCoordinates(e.clientX, e.clientY);
+            if (checkIntersection()) {
+                isDragging = true;
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+                document.body.style.cursor = 'grabbing';
+            }
+        }
+
+        function onMouseMove(e) {
+            getNormalizedCoordinates(e.clientX, e.clientY);
+            if (isDragging) {
+                const deltaMove = { x: e.clientX - previousMousePosition.x, y: e.clientY - previousMousePosition.y };
+                if (doughnutGroup) {
+                    doughnutGroup.rotation.y += deltaMove.x * 0.005;
+                    doughnutGroup.rotation.x += deltaMove.y * 0.005;
+                }
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            } else {
+                document.body.style.cursor = checkIntersection() ? 'grab' : 'default';
+            }
+        }
+
+        function onMouseUp() {
+            isDragging = false;
+            document.body.style.cursor = 'default';
+        }
+
+        function onTouchStart(e) {
+            if (e.touches.length === 1) {
+                getNormalizedCoordinates(e.touches[0].clientX, e.touches[0].clientY);
+                if (checkIntersection()) {
+                    isDragging = true;
+                    previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                    e.preventDefault(); 
+                }
+            }
+        }
+
+        function onTouchMove(e) {
+            if (isDragging && e.touches.length === 1) {
+                e.preventDefault();
+                const deltaMove = { x: e.touches[0].clientX - previousMousePosition.x, y: e.touches[0].clientY - previousMousePosition.y };
+                if (doughnutGroup) {
+                    doughnutGroup.rotation.y += deltaMove.x * 0.005;
+                    doughnutGroup.rotation.x += deltaMove.y * 0.005;
+                }
+                previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            }
+        }
+
+
+        function createDoughnutSegment(startAngle, endAngle, color, index) {
+            const innerR = 3.5;
+            const outerR = 6;
+            const height = 1.5;
+            const geometry = new THREE.CylinderGeometry(outerR, outerR, height, 64, 1, false, startAngle, endAngle - startAngle);
+            const material = new THREE.MeshPhongMaterial({ color: color, shininess: 80 });
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.rotation.x = Math.PI / 2;
+            return mesh;
+        }
+
+        function createPatientStatusDoughnut(data) {
+            const total = data.reduce((sum, item) => sum + item.value, 0);
+            let currentAngle = 0;
+            const group = new THREE.Group();
+            data.forEach((item, index) => {
+                const angle = (item.value / total) * Math.PI * 2;
+                const segment = createDoughnutSegment(currentAngle, currentAngle + angle, item.color, index);
+                const centerAngle = currentAngle + angle / 2;
+                const offsetX = Math.cos(centerAngle) * 0.3;
+                const offsetZ = Math.sin(centerAngle) * 0.3;
+
+                segment.position.set(0, 0, 0);
+                segment.userData = { 
+                    baseX: offsetX,
+                    baseY: offsetZ,
+                    baseZ: index * 0.1,
+                    randomPhase: Math.random() * Math.PI * 2
+                };
+                gsap.to(segment.position, { x: offsetX, y: offsetZ, z: index * 0.1, duration: 1.5, ease: "back.out(1.7)", delay: 1 + index * 0.2 });
+                group.add(segment);
+                currentAngle += angle;
+            });
+            group.rotation.x = 0.6; 
+            group.rotation.y = 0.4;
+            return group;
+        }
+
+        function onWindowResize() {
+            if (!camera || !renderer) return;
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+            const isMobile = width < 768;
+            if (doughnutGroup) {
+                if (isMobile) {
+                    currentChartY = CHART_Y_MOBILE;
+                    doughnutGroup.position.set(0, CHART_Y_MOBILE, 0);
+                    if (!window.isZoomed) camera.position.set(0, 0, CAM_DEFAULT_Z_MOBILE);
+                } else {
+                    currentChartY = CHART_Y_DESKTOP;
+                    doughnutGroup.position.set(0, CHART_Y_DESKTOP, 0);
+                    if (!window.isZoomed) camera.position.set(0, 0, CAM_DEFAULT_Z_DESKTOP);
+                }
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (controls) controls.update();
+            
+            if (doughnutGroup) {
+                if(!window.isZoomed && !isDragging) {
+                    doughnutGroup.rotation.y += 0.002; 
+                }
+                const time = Date.now() * 0.001;
+                doughnutGroup.children.forEach(child => {
+                    if (child.userData) {
+                        child.position.z = child.userData.baseZ + Math.sin(time + child.userData.randomPhase) * 0.1;
+                    }
+                });
+            }
+            renderer.render(scene, camera);
+        }
+
+        // --- DOM POPULATION ---
+        function populateLegends() {
+            const pieLegend = document.getElementById('pie-legend');
+            pieLegend.innerHTML = '';
+            mockData.patientStatus.forEach(item => {
+                const colorHex = '#' + item.color.toString(16).padStart(6, '0');
+                const element = document.createElement('div');
+                element.className = 'flex items-center justify-between border-b border-gray-700 pb-1 last:border-0';
+                element.innerHTML = `
+                    <div class="flex items-center space-x-2">
+                        <span class="w-2 h-2 rounded-full" style="background-color: ${colorHex}"></span>
+                        <span class="text-gray-300 font-medium">${item.status}</span>
+                    </div>
+                    <span class="font-bold text-white">${item.value}%</span>
+                `;
+                pieLegend.appendChild(element);
+            });
+        }
+
+        function animateKPIs() {
+             const kpis = mockData.kpis;
+             gsap.fromTo("#rmp-count", { innerText: 0 }, { innerText: kpis.rmpCount, duration: 1.5, snap: "innerText", ease: "power1.out" });
+             gsap.fromTo("#engaged-count", { innerText: 0 }, { innerText: kpis.engagedPatients, duration: 1.5, snap: "innerText", ease: "power1.out" });
+             gsap.fromTo("#views-count", { innerText: 0 }, { innerText: kpis.posterViews, duration: 2, snap: "innerText", ease: "power1.out" });
+             gsap.fromTo("#shares-count", { innerText: 0 }, { innerText: kpis.posterShares, duration: 2, snap: "innerText", ease: "power1.out" });
+
+             gsap.timeline()
+                .to("#header-section", { opacity: 1, y: 0, duration: 0.8 })
+                .to("#metrics-section", { opacity: 1, duration: 0.8 }, "-=0.4")
+                .to("#chart-legend-section", { opacity: 1, duration: 0.8 }, "-=0.4")
+                .to("#three-container", { opacity: 1, duration: 1 }, "-=0.8");
+        }
+
+
+        // --- VOICE TOUR ENGINE ---
+        window.isSpeaking = false;
+        window.isZoomed = false;
+        
+        const TOUR_STEPS = [
+            { text: "Welcome to Vaidya AI Dashboard V1. Let's review your real-time practice metrics.", target: null },
+            { text: `You currently have ${mockData.kpis.rmpCount} Associated RMP Doctors in your network.`, target: "card-rmp" },
+            { text: `Patient engagement is strong, with ${mockData.kpis.engagedPatients} active patients.`, target: "card-engaged" },
+            { text: `Your outreach posters have been viewed ${mockData.kpis.posterViews} times in the last 30 days.`, target: "card-views" },
+            { text: `And shared ${mockData.kpis.posterShares} times.`, target: "card-shares" },
+            { text: "Now, let's examine the Patient Status breakdown in the 3D chart below.", target: "card-status", action: "scroll_to_chart" },
+            // NO ZOOM ACTION HERE, JUST SCROLL AND SHOW TEXT
+            { text: `Looking at the data, Active patients make up ${mockData.patientStatus[0].value}% of the total.`, target: "card-status", dataIndex: 0 },
+            { text: `Observation cases currently stand at ${mockData.patientStatus[1].value}%.`, target: "card-status", dataIndex: 1 },
+            { text: `And Discharged patients account for ${mockData.patientStatus[2].value}%.`, target: "card-status", dataIndex: 2 },
+            { text: "You can rotate this chart manually to view it from different angles. This concludes the tour.", target: null, action: "reset" }
+        ];
+
+        window.toggleVoiceTour = function() {
+            const btn = document.getElementById('voice-tour-btn');
+            
+            if (window.isSpeaking) {
+                window.speechSynthesis.cancel();
+                window.isSpeaking = false;
+                btn.classList.remove('voice-active');
+                btn.querySelector('span').innerText = "Voice Tour";
+                resetHighlights();
+                hideFloatingText();
+                return;
+            }
+
+            window.isSpeaking = true;
+            btn.classList.add('voice-active');
+            btn.querySelector('span').innerText = "Stop Tour";
+            playStep(0);
+        };
+
+        function playStep(index) {
+            if (!window.isSpeaking || index >= TOUR_STEPS.length) {
+                window.toggleVoiceTour();
+                return;
+            }
+            const step = TOUR_STEPS[index];
+
+            resetHighlights();
+            if (step.target) {
+                const el = document.getElementById(step.target);
+                if (el) el.classList.add('highlight-active');
+            }
+
+            if (step.action === "scroll_to_chart") {
+                document.getElementById('dashboard-overlay').scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+            }
+            
+            if (step.action === "reset") {
+                hideFloatingText();
+                document.getElementById('dashboard-overlay').scrollTo({ top: 0, behavior: 'smooth' });
+            }
+
+            // --- DYNAMIC TEXT LOGIC ---
+            if (step.dataIndex !== undefined) {
+                const dataItem = mockData.patientStatus[step.dataIndex];
+                // Updated to include the status name along with the percentage as requested
+                showFloatingText(`${dataItem.status}: ${dataItem.value}%`, dataItem.color);
+            }
+
+            const utterance = new SpeechSynthesisUtterance(step.text);
+            utterance.rate = 1.0;
+            const voices = window.speechSynthesis.getVoices();
+            const voice = voices.find(v => v.name.includes('Google US English')) || voices.find(v => v.lang === 'en-US');
+            if (voice) utterance.voice = voice;
+
+            utterance.onend = () => {
+                if (window.isSpeaking) {
+                    setTimeout(() => playStep(index + 1), 300);
+                }
+            };
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function resetHighlights() {
+            document.querySelectorAll('.highlight-active').forEach(el => el.classList.remove('highlight-active'));
+        }
+
+        // Removed resetCamera and zoomToChart since we aren't zooming anymore
+
+        window.onload = function() {
+            initThreeJS();
+            populateLegends();
+            animateKPIs();
+            window.speechSynthesis.getVoices(); 
+        };
+    </script>
+</body>
+</html>
