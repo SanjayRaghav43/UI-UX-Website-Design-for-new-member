@@ -184,6 +184,15 @@
                                     </div>
                                 </div>
                                 
+                                <!-- Forgot Password Link -->
+<div class="text-right -mt-2 mb-1">
+    <button type="button" onclick="openForgotPassword()" 
+        class="text-xs text-blue-400 hover:text-blue-300">
+        Forgot Password?
+    </button>
+</div>
+
+
                                 <button type="submit" class="w-full py-3 rounded-xl shadow-lg text-sm font-bold text-white bg-blue-600 hover:bg-blue-500 transition-transform hover:scale-[1.02]">
                                     Login
                                 </button>
@@ -878,6 +887,116 @@ function handleRegister() {
         }
 
         init3D();
+
+function openForgotPassword() {
+    document.getElementById("forgot-popup").classList.remove("hidden");
+}
+
+function closeForgotPassword() {
+    document.getElementById("forgot-popup").classList.add("hidden");
+}
+
+let FP_OTP = "";
+
+function sendFPOTP() {
+    const email = document.getElementById("fp-email").value.trim();
+
+    if (!email.includes("@")) {
+        alert("Please enter a valid email!");
+        return;
+    }
+
+    FP_OTP = Math.floor(100000 + Math.random() * 900000).toString();
+    console.log("OTP:", FP_OTP);
+
+    alert("OTP sent to " + email);
+
+    document.getElementById("fp-otp").classList.remove("hidden");
+}
+
+document.getElementById("fp-otp").addEventListener("input", function () {
+    if (this.value === FP_OTP) {
+        this.classList.add("border-green-500");
+        document.getElementById("fp-pass-section").classList.remove("hidden");
+        document.getElementById("fp-submit").classList.remove("hidden");
+    }
+});
+
+function submitNewPassword() {
+    const p1 = document.getElementById("fp-pass").value.trim();
+    const p2 = document.getElementById("fp-pass2").value.trim();
+
+    if (!p1 || !p2) {
+        alert("Please fill both password fields");
+        return;
+    }
+
+    if (p1 !== p2) {
+        alert("Passwords do not match");
+        return;
+    }
+
+    alert("Password Updated Successfully!");
+
+    closeForgotPassword();
+}
+
+
     </script>
+<!-- FORGOT PASSWORD POPUP -->
+<div id="forgot-popup" 
+     class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center hidden z-50">
+    
+    <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-md shadow-xl">
+
+        <h2 class="text-lg font-bold text-white mb-4">Reset Password</h2>
+
+        <!-- Enter Email -->
+        <label class="text-xs text-gray-300">Registered Email</label>
+        <div class="flex gap-2 mt-1">
+            <input id="fp-email" type="email" 
+                class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white"
+                placeholder="Enter email">
+
+            <button onclick="sendFPOTP()"
+                class="px-3 py-2 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-500">
+                Send OTP
+            </button>
+        </div>
+
+        <!-- OTP Input -->
+        <input id="fp-otp" type="text"
+            class="w-full px-3 py-2 mt-3 bg-gray-800 border border-gray-700 rounded-lg text-white hidden"
+            placeholder="Enter OTP">
+
+        <!-- New Password -->
+        <div id="fp-pass-section" class="hidden">
+            <label class="block mt-3 text-xs text-gray-300">New Password</label>
+            <input id="fp-pass" type="password"
+                class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white"
+                placeholder="Enter new password">
+
+            <label class="block mt-3 text-xs text-gray-300">Confirm Password</label>
+            <input id="fp-pass2" type="password"
+                class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white"
+                placeholder="Confirm password">
+        </div>
+
+        <!-- Buttons -->
+        <div class="flex justify-end mt-5 gap-2">
+            <button onclick="closeForgotPassword()"
+                class="text-gray-400 hover:text-white text-xs px-3 py-1">
+                Cancel
+            </button>
+
+            <button id="fp-submit" onclick="submitNewPassword()" 
+                class="bg-green-600 text-white text-xs px-4 py-2 rounded-lg hover:bg-green-500 hidden">
+                Update
+            </button>
+        </div>
+    </div>
+</div>
+
+
 </body>
 </html>
