@@ -276,10 +276,12 @@
                         
                         <!-- Login Button with Hanging Stethoscope -->
                         <div class="relative inline-block login-container group">
-                            <a href="login.html" target="_blank" class="relative z-10 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-full text-sm font-medium transition-all shadow-lg hover:shadow-blue-500/50 flex items-center gap-2">
-                                Doctor Login
-                                <i data-lucide="log-in" class="w-4 h-4"></i>
-                            </a>
+                            <a id="doctor-login-btn" href="login.html" target="_blank"
+class="relative z-10 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-full text-sm font-medium transition-all shadow-lg hover:shadow-blue-500/50 flex items-center gap-2">
+    Doctor Login
+    <i data-lucide="log-in" class="w-4 h-4"></i>
+</a>
+
                             <!-- The Hanging Stethoscope SVG -->
                             <svg class="hanging-stethoscope" viewBox="0 0 100 200" xmlns="http://www.w3.org/2000/svg">
                                 <!-- Earpieces -->
@@ -298,6 +300,13 @@
 
                     </div>
                 </div>
+                <!-- Logout Button -->
+<button id="logout-btn"
+class="hidden bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-full text-sm font-medium transition-all shadow-lg hover:shadow-red-500/50 flex items-center gap-2">
+    Logout
+    <i data-lucide="log-out" class="w-4 h-4"></i>
+</button>
+
                 <div class="-mr-2 flex md:hidden">
                     <button type="button" id="mobile-menu-btn" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none">
                         <i data-lucide="menu" class="w-6 h-6"></i>
@@ -498,7 +507,7 @@
     <section id="sop-cards" class="py-24 relative z-20 bg-slate-950">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-16">
-                <h2 class="text-3xl md:text-4xl font-bold mb-4">Core Modules (SOP)</h2>
+                <h2 class="text-3xl md:text-4xl font-bold mb-4">Core Modules for Doctor's (SOP)</h2>
                 <p class="text-gray-400">Direct access to Vaidya AI application modules.</p>
             </div>
 
@@ -595,6 +604,15 @@
                     </ul>
                 </div>
             </div>
+
+            <!-- Patient POV Button -->
+<div class="flex items-start md:items-center">
+    <a href="patient.html"
+       class="bg-green-500 hover:bg-green-600 text-white text-sm font-semibold px-4 py-2 rounded-full shadow-lg transition-all">
+        Patient POV
+    </a>
+</div>
+
 
             <!-- Bottom Bar with Centered Content -->
             <div class="border-t border-white/10 pt-8 flex flex-col items-center justify-center gap-4">
@@ -1305,5 +1323,108 @@
             initVoiceAssistant();
         };
     </script>
+   <script>
+    // Read values from URL
+    const params = new URLSearchParams(window.location.search);
+    const username = params.get("user");
+    const role = params.get("role");
+
+    const loginBtn = document.getElementById("doctor-login-btn");
+
+    if (username && role === "doctor") {
+        const formatted = "Dr. " + username.charAt(0).toUpperCase() + username.slice(1);
+        loginBtn.innerHTML = `${formatted}`;
+        loginBtn.removeAttribute("href");
+        loginBtn.style.cursor = "default";
+    }
+</script>
+<script>
+    const logoutBtn = document.getElementById("logout-btn");
+
+    if (username && role === "doctor") {
+        logoutBtn.classList.remove("hidden"); // Show Logout button
+    }
+
+    logoutBtn.addEventListener("click", () => {
+        // Clear login session by reloading homepage WITHOUT params
+        window.location.href = "index.html";
+    });
+</script>
+
+
+<script>
+    // POPUP functions
+    function openPopup() {
+        document.getElementById("login-popup").classList.remove("hidden");
+        document.getElementById("login-popup").classList.add("flex");
+    }
+
+    function closePopup() {
+        document.getElementById("login-popup").classList.add("hidden");
+    }
+
+    function redirectToLogin() {
+        window.location.href = "login.html";
+    }
+
+    // Check login status
+    const userLoggedIn = username && role === "doctor";
+
+    // Protect module links (V1–V5)
+    const protectedLinks = document.querySelectorAll("a[target='_blank']");
+
+    protectedLinks.forEach(link => {
+        link.addEventListener("click", function(event) {
+            if (!userLoggedIn) {
+                event.preventDefault();
+                openPopup(); // 🔥 Show UI popup (NOT alert)
+            }
+        });
+    });
+</script>
+
+
+<!-- LOGIN REQUIRED POPUP -->
+<div id="login-popup" class="fixed inset-0 hidden items-center justify-center bg-black/70 backdrop-blur-sm z-[9999]">
+    <div class="bg-slate-800/80 p-8 rounded-2xl w-80 text-center border border-white/10 shadow-2xl animate-fade-in">
+        
+        <h2 class="text-2xl font-bold text-blue-400 mb-3">Login Required</h2>
+        
+        <p class="text-gray-300 text-sm mb-6">
+            You must be logged in as a doctor to access this module.  
+            Please login to continue.
+        </p>
+
+        <button onclick="redirectToLogin()"
+            class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg font-semibold shadow-lg w-full transition-all">
+            Login Now
+        </button>
+
+        <button onclick="closePopup()"
+            class="mt-3 text-gray-400 hover:text-gray-200 text-xs underline">
+            Cancel
+        </button>
+    </div>
+</div>
+
+<style>
+@keyframes fade-in {
+    from { opacity: 0; transform: scale(0.95); }
+    to   { opacity: 1; transform: scale(1); }
+}
+.animate-fade-in { animation: fade-in 0.25s ease-out; }
+</style>
+
+
+<style>
+@keyframes popupFade {
+    from { opacity: 0; transform: scale(0.95); }
+    to   { opacity: 1; transform: scale(1); }
+}
+.animate-popup-fade {
+    animation: popupFade 0.35s ease-out;
+}
+</style>
+
 </body>
 </html>
