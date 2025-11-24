@@ -185,7 +185,7 @@
                                 </div>
                                 
                                 <button type="submit" class="w-full py-3 rounded-xl shadow-lg text-sm font-bold text-white bg-blue-600 hover:bg-blue-500 transition-transform hover:scale-[1.02]">
-                                    Login to Dashboard
+                                    Login
                                 </button>
 
                                 <!-- Google Login -->
@@ -439,7 +439,7 @@ function handleRegister() {
 
         const VALID_CREDENTIALS = {
             doctor: { user: 'sanjay', pass: 'sanjay' },
-            patient: { user: 'patient', pass: 'pass' }
+            patient: { user: 'kalyan', pass: 'pass' }
         };
 
         function toggleAuthMode(mode) {
@@ -496,21 +496,40 @@ function handleRegister() {
         }
 
         // --- Form Handling ---
-        function handleLogin() {
-            const user = document.getElementById('login-user').value.trim();
-            const pass = document.getElementById('login-pass').value.trim();
-            
-            hideMessages();
+       function handleLogin() {
+    const user = document.getElementById('login-user').value.trim();
+    const pass = document.getElementById('login-pass').value.trim();
 
-            const validUser = VALID_CREDENTIALS[currentRole].user;
-            const validPass = VALID_CREDENTIALS[currentRole].pass;
+    hideMessages();
 
-            if (user === validUser && pass === validPass) {
-                showSuccess(`Welcome back, ${currentRole} <strong>${user}</strong>!`);
-            } else {
-                showError("Invalid username or password for " + currentRole);
+    const validUser = VALID_CREDENTIALS[currentRole].user;
+    const validPass = VALID_CREDENTIALS[currentRole].pass;
+
+    if (user === validUser && pass === validPass) {
+
+        showSuccess(`Welcome back, ${currentRole} <strong>${user}</strong>!`);
+
+        setTimeout(() => {
+            let url = "";
+
+            // Doctor → index.html
+            if (currentRole === "doctor") {
+                url = `index.html?user=${encodeURIComponent(user)}&role=doctor`;
+            } 
+            // Patient → patient.html
+            else if (currentRole === "patient") {
+                url = `patient.html?user=${encodeURIComponent(user)}&role=patient`;
             }
-        }
+
+            window.location.href = url;
+        }, 1000);
+
+    } else {
+        showError("Invalid username or password for " + currentRole);
+    }
+}
+
+
 
         function handleRegister() {
             const username = document.getElementById('reg-username').value.trim();
